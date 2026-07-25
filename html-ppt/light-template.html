@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+    <title>6× 更快的二分搜索 · 从编译代码到机械共鸣</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+    <style>
+        :root {
+            --bg-page: #f8f6f3;
+            --bg-slide: #ffffff;
+            --text-primary: #2c2c2c;
+            --text-heading: #1f3a3f;
+            --text-secondary: #5a5a5a;
+            --text-muted: #8c8c8c;
+            --accent: #c44f2c;
+            --accent-soft: #d9704a;
+            --accent-blue: #2c6280;
+            --code-bg: #f4f1ec;
+            --code-border: #cfc9bf;
+            --code-text: #2c2c2c;
+            --tag-bg: #ece6db;
+            --tag-text: #6b5f4e;
+            --divider: #e2ddd4;
+            --shadow: 0 2px 18px rgba(0, 0, 0, 0.06);
+            --shadow-hover: 0 4px 26px rgba(0, 0, 0, 0.09);
+            --transition: 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            user-select: none;
+        }
+        .presentation-container {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .slide {
+            display: none;
+            background: var(--bg-slide);
+            box-shadow: var(--shadow);
+            padding: 44px 48px 40px;
+            min-height: 500px;
+            width: 100%;
+            transition: opacity var(--transition), transform var(--transition);
+            animation: fadeSlide 0.4s ease-out;
+            opacity: 0;
+            transform: translateY(10px);
+            position: relative;
+            border-radius: 2px;
+            text-align: left;
+        }
+        .slide.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .slide-title.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            text-align: left;
+            min-height: 540px;
+            padding-top: 56px;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-title .pretitle {
+            font-size: 0.8rem;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 14px;
+            font-weight: 600;
+        }
+        .slide-title h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            line-height: 1.2;
+            margin-bottom: 10px;
+            letter-spacing: -0.01em;
+        }
+        .slide-title .subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+        .slide-title .meta {
+            display: flex;
+            gap: 14px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        .slide-title .meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--tag-bg);
+            padding: 4px 14px;
+            border-radius: 20px;
+            color: var(--tag-text);
+            font-size: 0.76rem;
+            font-weight: 500;
+        }
+        .slide-content h2 {
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 8px;
+        }
+        .slide-content .section-label {
+            display: inline-block;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 6px;
+            background: var(--tag-bg);
+            padding: 3px 12px;
+            border-radius: 12px;
+        }
+        .slide-content p {
+            font-size: 0.9rem;
+            line-height: 1.65;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            max-width: 96%;
+        }
+        .slide-content .desc {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            line-height: 1.6;
+        }
+        .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 16px 0 14px;
+        }
+        .stat-card {
+            background: #faf9f6;
+            border: 1px solid #e3ded5;
+            border-radius: 6px;
+            padding: 14px 18px;
+            flex: 1 1 120px;
+            text-align: center;
+            min-width: 90px;
+        }
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1.2;
+        }
+        .stat-number.blue { color: #2c6280; }
+        .stat-number.green { color: #3c7a4a; }
+        .stat-number.amber { color: #c4a040; }
+        .stat-number.red { color: #c0392b; }
+        .stat-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 24px;
+            margin: 8px 0 12px;
+        }
+        .stat-row .item {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+        }
+        .stat-row .item strong {
+            color: var(--text-heading);
+            font-weight: 600;
+        }
+        .bar-chart {
+            margin: 12px 0 10px;
+        }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .bar-label {
+            width: 120px;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+        .bar-track {
+            flex: 1;
+            height: 20px;
+            background: #eeebe5;
+            border-radius: 4px;
+            overflow: hidden;
+            min-width: 60px;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            transition: width 0.5s ease;
+        }
+        .bar-fill.classic { background: #c0392b; }
+        .bar-fill.branchless { background: #d4a843; }
+        .bar-fill.branchless2 { background: #4a8fa8; }
+        .bar-fill.branchless3 { background: #3c7a4a; }
+        .bar-fill.ipc { background: #7a6a9c; }
+        .bar-value {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            min-width: 50px;
+            text-align: right;
+        }
+        .version-table-wrap {
+            overflow-x: auto;
+            margin: 12px 0 8px;
+        }
+        .version-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            min-width: 500px;
+        }
+        .version-table th {
+            background: var(--code-bg);
+            color: var(--text-heading);
+            font-weight: 600;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 2px solid var(--divider);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .version-table td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #eeebe5;
+            color: var(--text-secondary);
+        }
+        .version-table .best-row td {
+            background: #f4f8f4;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .version-table .best-row td:first-child {
+            border-left: 3px solid #3c7a4a;
+        }
+        .tag {
+            display: inline-block;
+            font-size: 0.6rem;
+            background: var(--tag-bg);
+            padding: 1px 8px;
+            border-radius: 10px;
+            color: var(--tag-text);
+            font-weight: 500;
+            letter-spacing: 0.03em;
+        }
+        .tag.fast { background: #3c7a4a; color: #fff; }
+        .tag.slow { background: var(--accent); color: #fff; }
+        .highlight-box {
+            background: #faf8f5;
+            border: 1px solid #e8e3da;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: 0.84rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            border-radius: 4px;
+        }
+        .highlight-box strong { color: var(--text-heading); }
+        .highlight-box.info { border-left: 3px solid #4a8fa8; background: #f7f9fa; }
+        .highlight-box.warn { border-left: 3px solid #d4a843; background: #fffdf7; }
+        .highlight-box.success { border-left: 3px solid #3c7a4a; background: #f7fbf7; }
+        .highlight-box.danger { border-left: 3px solid #c0392b; background: #fef9f8; }
+        .cat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+            margin: 10px 0 6px;
+        }
+        .cat-item {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            padding: 2px 0;
+        }
+        .cat-name {
+            font-weight: 600;
+            color: var(--text-heading);
+            white-space: nowrap;
+        }
+        .cat-desc {
+            color: var(--text-muted);
+            font-size: 0.76rem;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 22px;
+            margin: 14px 0 8px;
+        }
+        .summary-grid .item {
+            background: #faf8f5;
+            border: 1px solid #e3ded5;
+            border-radius: 4px;
+            padding: 12px 14px;
+        }
+        .summary-grid .item h4 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 4px;
+        }
+        .summary-grid .item ul {
+            margin: 4px 0 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        .summary-grid .item ul li {
+            padding-left: 16px;
+            margin-bottom: 2px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            position: relative;
+        }
+        .summary-grid .item ul li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent-soft);
+            font-size: 0.55rem;
+            top: 0.15em;
+        }
+        .slide-number {
+            position: absolute;
+            bottom: 14px;
+            right: 24px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .navigation-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 22px;
+            width: 100%;
+        }
+        .nav-arrow {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-slide);
+            border: 1px solid var(--divider);
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.04);
+        }
+        .nav-arrow:hover {
+            background: #fafaf7;
+            color: var(--accent);
+            border-color: var(--accent-soft);
+        }
+        .nav-arrow:disabled { opacity: 0.3; pointer-events: none; }
+        .dot-indicators {
+            display: flex;
+            gap: 8px;
+        }
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #d4cfc7;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: none;
+        }
+        .dot.active {
+            background: var(--accent);
+            width: 26px;
+            border-radius: 12px;
+        }
+        .inline-code {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.82em;
+            background: #f3f1ec;
+            padding: 1px 6px;
+            border-radius: 3px;
+            color: #5c3d2e;
+        }
+        .slide-content pre {
+            margin: 8px 0 14px;
+            border-radius: 4px;
+            overflow-x: hidden;
+            font-size: 0.73rem;
+            border: 1px solid var(--code-border);
+            background: var(--code-bg);
+        }
+        .slide-content pre code {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.71rem;
+            color: var(--code-text);
+            line-height: 1.55;
+            padding: 10px 14px;
+            display: block;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+        .code-label {
+            display: inline-block;
+            font-size: 0.63rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 2px;
+            background: #f0ede8;
+            padding: 2px 10px;
+            border-radius: 8px;
+        }
+        /* highlight.js line numbers */
+        .hljs-ln-numbers {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            text-align: right;
+            color: var(--text-muted);
+            border-right: 1px solid var(--divider);
+            vertical-align: top;
+            padding-right: 10px !important;
+            padding-left: 10px !important;
+            font-size: 0.6rem;
+            min-width: 2em;
+        }
+        .hljs-ln-code {
+            padding-left: 14px !important;
+        }
+        @media (max-width: 820px) {
+            .slide { padding: 28px 22px 24px; min-height: 400px; }
+            .slide-title h1 { font-size: 1.8rem; }
+            .slide-content h2 { font-size: 1.25rem; }
+            .cat-grid { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+            .version-table { font-size: 0.7rem; min-width: 400px; }
+        }
+        @media (max-width: 520px) {
+            body { padding: 8px; }
+            .slide { padding: 16px 12px 18px; min-height: 320px; }
+            .slide-title h1 { font-size: 1.4rem; }
+            .slide-content h2 { font-size: 1.1rem; }
+            .bar-label { width: 60px; font-size: 0.65rem; text-align: left; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .version-table { font-size: 0.6rem; min-width: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container" id="presentation">
+
+        <!-- 幻灯片 0：中文标题 -->
+        <div class="slide slide-title active" data-index="0">
+            <div class="pretitle">性能优化 · CPU架构 · Rust</div>
+            <h1>6倍更快的<br />二分搜索</h1>
+            <p class="subtitle">从编译代码到机械共鸣——如何让CPU不再与你为敌</p>
+            <div class="meta">
+                <span>🦀 Itamar Turner-Trauring</span>
+                <span>📅 2026年7月11日</span>
+                <span>⚡ 分支预测 · SIMD · IPC</span>
+                <span>🔬 scikit-learn 实战</span>
+            </div>
+        </div>
+
+        <!-- 幻灯片 1：背景 -->
+        <div class="slide slide-content" data-index="1">
+            <span class="section-label">背景</span>
+            <h2>scikit-learn 中的浮点数分桶</h2>
+            <p class="desc">梯度直方图提升算法中的一步：将浮点数均匀分配到 0–254 的整数桶中。</p>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number">1,000,000</div><div class="stat-label">输入值</div></div>
+                <div class="stat-card"><div class="stat-number blue">255</div><div class="stat-label">桶边界</div></div>
+                <div class="stat-card"><div class="stat-number amber">0–254</div><div class="stat-label">目标整数</div></div>
+                <div class="stat-card"><div class="stat-number">二分搜索</div><div class="stat-label">算法</div></div>
+            </div>
+            <div class="highlight-box info" style="font-size:0.8rem;">
+                <strong>🔍 现有实现：</strong>编译语言 + 多核并行。但还能更快吗？瓶颈在于<strong>CPU 内部的执行效率</strong>。
+            </div>
+        </div>
+
+        <!-- 幻灯片 2：标准实现 -->
+        <div class="slide slide-content" data-index="2">
+            <span class="section-label">起点</span>
+            <h2>标准二分搜索 · Rust</h2>
+            <p class="desc">算法正确，编译优化，然而硬件层面存在隐藏的性能杀手。</p>
+            <span class="code-label">Rust 代码</span>
+            <pre><code class="language-rust">while min_idx &lt; max_idx {
+    let middle = min_idx + ((max_idx - min_idx) / 2);
+    if less_than(boundaries[middle], value) {
+        min_idx = middle + 1;   // 分支 A
+    } else {
+        max_idx = middle;       // 分支 B
+    }
+}</code></pre>
+            <div class="highlight-box warn" style="font-size:0.8rem;">
+                <strong>⚠️ 问题：</strong>数据均匀分布 → 每次比较方向<strong>完全随机</strong> → CPU 分支预测器失效。
+            </div>
+        </div>
+
+        <!-- 幻灯片 3：分支预测 -->
+        <div class="slide slide-content" data-index="3">
+            <span class="section-label">CPU 架构</span>
+            <h2>分支预测失败如何拖垮性能</h2>
+            <div class="cat-grid">
+                <div class="cat-item"><span class="cat-name">⚡ 指令级并行</span><span class="cat-desc">CPU 自动并行独立指令。</span></div>
+                <div class="cat-item"><span class="cat-name">🔀 分支预测器</span><span class="cat-desc">遇到分支时<strong>猜测</strong>路径提前执行。</span></div>
+                <div class="cat-item"><span class="cat-name">✅ 猜对</span><span class="cat-desc">零开销，性能提升。</span></div>
+                <div class="cat-item"><span class="cat-name">❌ 猜错</span><span class="cat-desc">撤销错误工作，重新执行——代价极高。</span></div>
+            </div>
+            <div class="highlight-box danger" style="font-size:0.8rem;">
+                <strong>🔴 二分搜索的致命点：</strong>均匀分布的数据使得分支方向不可预测，导致大量预测失败。
+            </div>
+        </div>
+
+        <!-- 幻灯片 4：测量 -->
+        <div class="slide slide-content" data-index="4">
+            <span class="section-label">测量</span>
+            <h2>硬件计数器数据</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number red">45,870 µs</div><div class="stat-label">耗时</div></div>
+                <div class="stat-card"><div class="stat-number amber">27M</div><div class="stat-label">分支指令</div></div>
+                <div class="stat-card"><div class="stat-number red">16.6%</div><div class="stat-label">误预测率</div></div>
+                <div class="stat-card"><div class="stat-number red">1.1</div><div class="stat-label">IPC</div></div>
+            </div>
+            <div class="bar-chart">
+                <div class="bar-row"><span class="bar-label">IPC</span><div class="bar-track"><div class="bar-fill ipc" style="width:18%;">1.1</div></div><span class="bar-value">峰值 ~4+</span></div>
+                <div class="bar-row"><span class="bar-label">误预测率</span><div class="bar-track"><div class="bar-fill classic" style="width:66%;">16.6%</div></div><span class="bar-value">理想 &lt;1%</span></div>
+            </div>
+        </div>
+
+        <!-- 幻灯片 5：无分支 -->
+        <div class="slide slide-content" data-index="5">
+            <span class="section-label">优化 #1</span>
+            <h2>无分支执行</h2>
+            <p class="desc">固定迭代次数，使用条件移动指令替代分支。</p>
+            <span class="code-label">Rust</span>
+            <pre><code class="language-rust">let n_iterations = (size as f64).log2().ceil() as usize;
+for _ in 0..n_iterations {
+    left = select_unpredictable(
+        less_than(boundaries[middle], value),
+        middle, left
+    );
+}</code></pre>
+            <div class="highlight-box success" style="font-size:0.8rem;">
+                <strong>✅ 效果：</strong>分支误预测率降至 0%，IPC 飙升至 4.0，耗时降至 13,198 µs（3.5× 加速）。
+            </div>
+        </div>
+
+        <!-- 幻灯片 6：对比 -->
+        <div class="slide slide-content" data-index="6">
+            <span class="section-label">对比</span>
+            <h2>经典 vs 无分支</h2>
+            <div class="version-table-wrap">
+                <table class="version-table">
+                    <tr><th>版本</th><th>耗时</th><th>指令</th><th>分支</th><th>误预测</th><th>IPC</th></tr>
+                    <tr><td>classic</td><td>45,810 µs</td><td>184.9M</td><td>27.0M</td><td>16.6%</td><td>1.1</td></tr>
+                    <tr class="best-row"><td><strong>branchless</strong></td><td><strong>13,198 µs</strong></td><td>188.1M</td><td>19.0M</td><td><strong>0.0%</strong></td><td><strong>4.0</strong></td></tr>
+                </table>
+            </div>
+            <div class="highlight-box success">指令数几乎相同，但 IPC 提升 3.6 倍——CPU 终于全速运转。</div>
+        </div>
+
+        <!-- 幻灯片 7：进一步优化 -->
+        <div class="slide slide-content" data-index="7">
+            <span class="section-label">优化 #2</span>
+            <h2>消除边界检查 + 预计算</h2>
+            <span class="code-label">Rust</span>
+            <pre><code class="language-rust">let halves = precompute_halves(); // 预计算
+for half in &halves {
+    let middle = left + half;
+    left = select_unpredictable(
+        less_than(unsafe { *boundaries.get_unchecked(middle) }, value),
+        middle, left
+    );
+}</code></pre>
+            <div class="highlight-box info">分支降至 8M，指令降至 121M，耗时 <strong>10,037 µs</strong>（再快 24%）。</div>
+        </div>
+
+        <!-- 幻灯片 8：SIMD -->
+        <div class="slide slide-content" data-index="8">
+            <span class="section-label">优化 #3</span>
+            <h2>自动向量化与 SIMD</h2>
+            <p>重组循环：外层 halves，内层 chunk (16个值)。编译器自动生成 SIMD 指令。</p>
+            <span class="code-label">Rust</span>
+            <pre><code class="language-rust">for chunk in arr.chunks(16) {
+    for half in &halves {
+        for (i, value) in chunk.iter().enumerate() {
+            lefts[i] = select_unpredictable(/*...*/);
+        }
+    }
+}</code></pre>
+            <div class="highlight-box info">启用 <span class="inline-code">x86-64-v3</span> 目标，指令降至 99.9M，耗时 <strong>7,106 µs</strong>。</div>
+        </div>
+
+        <!-- 幻灯片 9：性能对比（倒数第二页） -->
+        <div class="slide slide-content" data-index="9">
+            <span class="section-label">性能总览</span>
+            <h2>完整对比 · 6.5× 加速</h2>
+            <div class="version-table-wrap">
+                <table class="version-table">
+                    <tr><th>版本</th><th>耗时 (µs)</th><th>指令</th><th>分支</th><th>误预测</th><th>IPC</th></tr>
+                    <tr><td>1. classic</td><td>45,981</td><td>184.9M</td><td>27.0M</td><td>16.6%</td><td>1.1</td></tr>
+                    <tr><td>2. branchless</td><td>13,269</td><td>188.1M</td><td>19.0M</td><td>0.0%</td><td>4.0</td></tr>
+                    <tr><td>3. +预计算</td><td>10,037</td><td>121.1M</td><td>8.0M</td><td>0.0%</td><td>3.4</td></tr>
+                    <tr class="best-row"><td><strong>4. +SIMD</strong></td><td><strong>7,106</strong></td><td><strong>99.9M</strong></td><td><strong>6.8M</strong></td><td><strong>0.0%</strong></td><td><strong>3.9</strong></td></tr>
+                </table>
+            </div>
+            <div class="bar-chart">
+                <div class="bar-row"><span class="bar-label">classic</span><div class="bar-track"><div class="bar-fill classic" style="width:100%;">45,981</div></div></div>
+                <div class="bar-row"><span class="bar-label">branchless</span><div class="bar-track"><div class="bar-fill branchless" style="width:29%;">13,269</div></div></div>
+                <div class="bar-row"><span class="bar-label">+预计算</span><div class="bar-track"><div class="bar-fill branchless2" style="width:22%;">10,037</div></div></div>
+                <div class="bar-row"><span class="bar-label">+SIMD</span><div class="bar-track"><div class="bar-fill branchless3" style="width:15%;">7,106</div></div></div>
+            </div>
+        </div>
+
+        <!-- 幻灯片 10：总结（最后一页） -->
+        <div class="slide slide-content" data-index="10">
+            <span class="section-label">总结</span>
+            <h2>核心收获 · 你也可以做到</h2>
+            <div class="summary-grid">
+                <div class="item"><h4>🧠 理解 CPU</h4><ul><li>分支预测失败代价巨大</li><li>IPC 是效率标尺</li><li>内存延迟 > 计算延迟</li></ul></div>
+                <div class="item"><h4>🔧 优化策略</h4><ul><li>消除不可预测分支</li><li>减少重复计算</li><li>利用 SIMD 并行</li></ul></div>
+                <div class="item"><h4>📚 推荐资源</h4><ul><li>Computer Systems: A Programmer's Perspective</li><li>Performance Analysis and Tuning on Modern CPUs</li><li>Algorithms for Modern Hardware</li></ul></div>
+                <div class="item"><h4>🦀 实践</h4><ul><li>测量 > 猜测</li><li>算法 → 编译 → 机械共鸣</li><li>从 Python 也能入门</li></ul></div>
+            </div>
+            <div class="highlight-box success" style="margin-top:8px;">
+                <strong>📌 核心教训：</strong>编译语言 ≠ 自动快速。真正的性能源于<strong>让代码与 CPU 协作</strong>——从分支预测到 SIMD，最终实现 6 倍加速。
+            </div>
+        </div>
+
+        <!-- 导航 -->
+        <div class="navigation-bar">
+            <button class="nav-arrow" id="prevBtn">&#9664;</button>
+            <div class="dot-indicators" id="dotIndicators"></div>
+            <button class="nav-arrow" id="nextBtn">&#9654;</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+    <script>
+        hljs.highlightAll();
+        hljs.initLineNumbersOnLoad();
+        (function() {
+            const slides = document.querySelectorAll('.slide');
+            const total = slides.length;
+            let current = 0;
+            const dotContainer = document.getElementById('dotIndicators');
+            for (let i = 0; i < total; i++) {
+                const dot = document.createElement('button');
+                dot.className = 'dot';
+                dot.addEventListener('click', () => goTo(i));
+                dotContainer.appendChild(dot);
+            }
+            const dots = document.querySelectorAll('.dot');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            function updateSlide(index) {
+                slides.forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+                const cur = slides[index];
+                cur.style.display = cur.classList.contains('slide-title') ? 'flex' : 'block';
+                cur.classList.add('active');
+                dots.forEach(d => d.classList.remove('active'));
+                dots[index].classList.add('active');
+                current = index;
+                prevBtn.disabled = index === 0;
+                nextBtn.disabled = index === total - 1;
+            }
+            function goTo(i) { if (i >= 0 && i < total) updateSlide(i); }
+            prevBtn.addEventListener('click', () => { if (current > 0) goTo(current - 1); });
+            nextBtn.addEventListener('click', () => { if (current < total - 1) goTo(current + 1); });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); if (current < total - 1) goTo(current + 1); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); if (current > 0) goTo(current - 1); }
+            });
+            updateSlide(0);
+        })();
+    </script>
+</body>
+</html>
