@@ -21,6 +21,7 @@ html-ppt 的组件参考，每个组件有固定的 HTML 结构。
 | 总结收尾 | `.summary-grid` + `.highlight-box.success` |
 | 行内代码 | `span.inline-code` |
 | 标签标记 | `span.tag` 或 `.tag.fast` / `.tag.slow` |
+| 配图 | `.slide-image` + `p.image-caption` |
 
 ---
 
@@ -223,6 +224,23 @@ if less_than(boundaries[middle], value) {
 ```
 
 `.tag` 无修饰为默认色。`.tag.fast`（绿色背景）和 `.tag.slow`（红色背景）用于状态标记。
+
+---
+
+## 配图 (`.slide-image`)
+
+```html
+<div class="slide-image">
+    <img src="images/img-01.jpg" alt="架构示意图" />
+</div>
+<p class="image-caption">图 1：微服务架构中的请求流转路径</p>
+```
+
+- `.slide-image` 包裹 `<img>`，提供圆角、阴影和居中样式
+- `img` 设置 `max-width:100%`、`max-height:360px`、`object-fit:contain`，等比缩放不裁剪，保证图片完整可见且不撑破布局
+- `p.image-caption` 用于图片说明文字，取自原文图注或 alt 文本
+- 图片路径使用相对路径 `images/img-XX.ext`，HTML 文件与 `images/` 目录同级
+- 每页最多一张主图，与文字上下排列
 
 ---
 
