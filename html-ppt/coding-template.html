@@ -15,8 +15,8 @@
             --text-heading: #111413;
             --text-secondary: #3c4441;
             --text-muted: #6c7572;
-            --accent: #1f4bd8;
-            --accent-ink: #101b3b;
+            --accent: #f74c00;
+            --accent-ink: #bf3600;
             --rule: rgba(17, 20, 19, 0.14);
             --rule-strong: rgba(17, 20, 19, 0.34);
             --code-bg: #f7f6f2;
@@ -27,7 +27,7 @@
             --success: #2f7a4f;
             --warn: #9a6b12;
             --danger: #b03a2e;
-            --info: #1f5fa8;
+            --info: #bf3600;
             --shadow: 0 1px 2px rgba(20, 23, 26, 0.05), 0 18px 44px rgba(20, 23, 26, 0.08);
             --transition: 0.3s ease;
         }
@@ -96,7 +96,7 @@
             text-transform: uppercase;
             color: var(--text-muted);
         }
-        .top .sec { color: var(--accent); }
+        .top .sec { color: var(--accent-ink); }
         .rule {
             height: 1px;
             background: var(--rule);
@@ -211,7 +211,7 @@
             letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums;
         }
-        .stat-number.blue { color: var(--accent); }
+        .stat-number.blue { color: var(--accent-ink); }
         .stat-number.green { color: var(--success); }
         .stat-number.amber { color: var(--warn); }
         .stat-number.red { color: var(--danger); }
@@ -269,8 +269,8 @@
             transition: width 0.5s ease;
         }
         .bar-fill.classic { background: var(--ink); }
-        .bar-fill.branchless { background: var(--accent); }
-        .bar-fill.branchless2 { background: #5b7a8c; }
+        .bar-fill.branchless { background: var(--accent-ink); }
+        .bar-fill.branchless2 { background: #8b8378; }
         .bar-fill.branchless3 { background: var(--success); }
         .bar-fill.ipc { background: var(--warn); }
         .bar-value {
@@ -310,7 +310,7 @@
             font-weight: 600;
             color: var(--text-primary);
         }
-        .version-table .best-row td:first-child { color: var(--accent); }
+        .version-table .best-row td:first-child { color: var(--accent-ink); }
 
         /* ---------- 标签 ---------- */
         .tag {
@@ -337,7 +337,7 @@
             line-height: 1.6;
         }
         .highlight-box strong { color: var(--text-heading); }
-        .highlight-box.info { border-left-color: var(--info); background: #f4f7fa; }
+        .highlight-box.info { border-left-color: var(--info); background: #fdf2ec; }
         .highlight-box.warn { border-left-color: var(--warn); background: #fbf8f1; }
         .highlight-box.success { border-left-color: var(--success); background: #f3f8f4; }
         .highlight-box.danger { border-left-color: var(--danger); background: #fbf5f4; }
@@ -362,7 +362,7 @@
             font-family: var(--font-mono);
             font-size: 0.6rem;
             letter-spacing: 0.12em;
-            color: var(--accent);
+            color: var(--accent-ink);
             padding-top: 3px;
         }
         .row .nm {
@@ -437,7 +437,7 @@
             content: '·';
             position: absolute;
             left: 2px;
-            color: var(--accent);
+            color: var(--accent-ink);
             font-weight: 700;
         }
 
@@ -544,7 +544,7 @@
         .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-name { color: #7b3fa0; }
         .hljs-string, .hljs-attr, .hljs-template-tag, .hljs-regexp { color: #2f7a4f; }
         .hljs-number, .hljs-symbol, .hljs-bullet, .hljs-attribute { color: #a65a18; }
-        .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--accent); }
+        .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--accent-ink); }
         .hljs-type, .hljs-class .hljs-title, .hljs-built_in { color: #1b6e6b; }
         .hljs-variable, .hljs-template-variable, .hljs-params, .hljs-property { color: var(--code-text); }
         .hljs-meta, .hljs-meta .hljs-keyword { color: #8a6d2f; }
@@ -579,8 +579,8 @@
         }
         .nav-arrow:hover {
             background: var(--bg-slide);
-            color: var(--accent);
-            border-color: var(--accent);
+            color: var(--accent-ink);
+            border-color: var(--accent-ink);
         }
         .nav-arrow:disabled { opacity: 0.28; pointer-events: none; }
         .dot-indicators { display: flex; gap: 7px; }
@@ -594,7 +594,7 @@
             border: none;
         }
         .dot.active {
-            background: var(--accent);
+            background: var(--accent-ink);
             width: 22px;
             border-radius: 3px;
         }
