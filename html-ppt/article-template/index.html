@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+    <title>非代码文章模板 · 2026 Rust 编译器观察</title>
+    <style>
+        :root {
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            --font-mono: 'Noto Sans Mono CJK SC', 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Menlo', 'Consolas', monospace;
+            --font-serif: 'Noto Serif CJK SC', 'Source Han Serif SC', serif;
+            --bg-page: #e4e7e5;
+            --bg-slide: #eff1f0;
+            --ink: #111413;
+            --text-primary: #22272c;
+            --text-secondary: #3c4441;
+            --text-muted: #6c7572;
+            --soft: #3c4441;
+            --signal: #f74c00;
+            --signal-text: #bf3600;
+            --rule: rgba(17, 20, 19, 0.14);
+            --rule-strong: rgba(17, 20, 19, 0.34);
+            --shadow: 0 1px 2px rgba(20, 23, 26, 0.05), 0 18px 44px rgba(20, 23, 26, 0.10);
+            --transition: 0.3s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-page);
+            color: var(--ink);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            user-select: none;
+        }
+        .presentation-container {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .slide {
+            display: none;
+            flex-direction: column;
+            background: var(--bg-slide);
+            box-shadow: var(--shadow);
+            padding: 35px 45px 29px;
+            min-height: 540px;
+            height: 540px;
+            width: 100%;
+            transition: opacity var(--transition), transform var(--transition);
+            animation: fadeSlide 0.4s ease-out;
+            opacity: 0;
+            transform: translateY(10px);
+            position: relative;
+            text-align: left;
+            overflow: hidden;
+        }
+        .slide.active { display: flex !important; opacity: 1; transform: translateY(0); }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 20px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .top .sec { color: var(--signal-text); }
+        .rule { height: 1px; background: var(--rule); margin-top: 8px; flex: 0 0 auto; }
+
+        .kicker { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.24em; color: var(--signal-text); }
+        h2 { font-size: 33px; font-weight: 700; letter-spacing: -0.012em; margin-top: 17px; line-height: 1.2; }
+        h2.big { font-size: 44px; }
+        .dek { margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--soft); max-width: 600px; }
+
+        .mono { font-family: var(--font-mono); }
+        .muted { color: var(--text-muted); }
+        .signal { color: var(--signal-text); }
+
+        .foot {
+            margin-top: auto;
+            border-top: 1px solid var(--rule);
+            padding-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 24px;
+            font-size: 10.5px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .foot .en { font-family: var(--font-mono); font-size: 8px; color: var(--text-muted); white-space: nowrap; }
+        .note { font-size: 9px; line-height: 1.62; color: var(--text-muted); }
+        .note b { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+
+        .navigation-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .nav-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            cursor: pointer;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .nav-arrow:hover { background: var(--bg-slide); color: var(--signal-text); border-color: var(--signal-text); }
+        .nav-arrow:disabled { opacity: 0.28; pointer-events: none; }
+        .dot-indicators { display: flex; gap: 7px; }
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #c6c2b7;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: none;
+        }
+        .nav-dot.active { background: var(--signal-text); width: 22px; border-radius: 3px; }
+
+        @media (max-width: 820px) {
+            body { padding: 12px; }
+            .slide { padding: 24px 22px 20px; min-height: 460px; height: auto; }
+            h2 { font-size: 22px; }
+            h2.big { font-size: 28px; }
+            .dek { font-size: 10px; }
+        }
+
+
+        /* ---------- 页面局部样式 ---------- */
+/* 01-cover */
+#p01 h1 {font-size:48px; font-weight:700; line-height:1.16; letter-spacing:-.01em; margin-top:11px;}
+#p01 h1 em {font-style:normal; color:var(--muted); font-weight:500;}
+#p01 .head {margin-top:37px; display:flex; align-items:flex-start; justify-content:space-between;}
+#p01 .dek {width:420px; margin-top:15px; font-size:14.5px; line-height:1.62;}
+#p01 .mark {width:48px; height:48px; margin-top:3px;}
+#p01 .chartblock {margin-top:auto; display:flex; align-items:flex-end; gap:28px;}
+#p01 .chart {width:620px;}
+#p01 .chart svg {display:block; width:620px; height:125px; overflow:visible;}
+#p01 .sidenote {width:200px; padding-bottom:4px;}
+#p01 .zones {display:flex; font-family:var(--mono); font-size:8px; letter-spacing:.06em; color:var(--muted); margin-top:5px;}
+#p01 .zones span {border-top:1px solid var(--rule); padding-top:5px;}
+#p01 .z1 {width:31%;}
+#p01 .z2 {width:50%;}
+#p01 .z3 {width:19%; color:var(--ink);}
+
+/* 02-thesis */
+#p02 {background:#FFFFFF; font-family:var(--serif);}
+#p02 .top, #p02 .foot {font-family:var(--serif); letter-spacing:.3em; color:var(--muted);}
+#p02 .top {font-size:9.5px;}
+#p02 .rule {background:var(--ink);}
+#p02 .body {flex:1; display:flex; align-items:center; gap:39px;}
+#p02 .bar {width:1px; align-self:stretch; background:var(--ink); margin:33px 0;}
+#p02 .q {width:670px;}
+#p02 .q .en {font-size:32px; line-height:1.5; letter-spacing:-.01em;}
+#p02 .q .en i {font-style:italic;}
+#p02 .q .cn {margin-top:23px; font-family:var(--sans); font-size:14px; line-height:1.85; color:#3A3833; width:505px;}
+#p02 .side {flex:0 0 150px; align-self:flex-end; padding-bottom:32px; font-family:var(--sans); font-size:9.5px; line-height:1.8; color:var(--muted);}
+#p02 .side b {display:block; color:var(--ink); font-weight:700; font-size:10px; margin-bottom:4px;}
+#p02 .foot {font-family:var(--sans); font-size:9.5px; letter-spacing:0;}
+
+/* 03-type-system */
+#p03 .rows {flex:1; display:flex; flex-direction:column; justify-content:center; margin-top:5px;}
+#p03 .row {display:grid; grid-template-columns:48px 235px 1fr; gap:22px; align-items:start;
+        padding:18px 0; border-top:1px solid var(--rule);}
+#p03 .row:last-child {border-bottom:1px solid var(--rule);}
+#p03 .key {font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; color:var(--signal-text); padding-top:4.5px;}
+#p03 .bt {font-size:19px; font-weight:700; line-height:1.28;}
+#p03 .bt small {display:block; font-family:var(--mono); font-size:8.5px; font-weight:400; letter-spacing:.06em;
+             color:var(--muted); margin-top:6px;}
+#p03 .body {font-size:12px; line-height:1.78; color:#2E3532; padding-top:3px;}
+#p03 .body p + p {margin-top:7px;}
+#p03 .body .hl {border-left:1px solid var(--signal); padding-left:9px; color:var(--muted); font-size:12px;}
+
+/* 04-perf */
+#p04 .rows {margin-top:12px;}
+#p04 .row {display:grid; grid-template-columns:48px 215px 1fr 88px; gap:16px; align-items:baseline;
+        padding:8px 0; border-top:1px solid var(--rule);}
+#p04 .row:last-child {border-bottom:1px solid var(--rule);}
+#p04 .key {font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; color:var(--signal-text);}
+#p04 .nm {font-size:14px; font-weight:700;}
+#p04 .ds {font-size:12px; line-height:1.6; color:#2E3532;}
+#p04 .ds .mono {font-size:11px; color:var(--muted);}
+#p04 .st {font-family:var(--mono); font-size:8.5px; color:var(--muted); text-align:right; line-height:1.5;}
+#p04 .why {margin-top:15px; margin-bottom:6px; display:flex; gap:22px;}
+#p04 .why div {flex:1; font-size:12px; line-height:1.55; color:var(--soft);}
+#p04 .why b {display:block; font-family:var(--mono); font-size:8px; letter-spacing:.14em; color:var(--ink); font-weight:500; margin-bottom:4px;}
+
+/* 05-llvm */
+#p05 .chart {margin-top:17px;}
+#p05 .chart svg {display:block; width:870px; height:165px; overflow:visible;}
+#p05 .legend {display:flex; margin-top:4px; margin-bottom:11px; border-top:1px solid var(--rule);}
+#p05 .legend div {padding-top:10px;}
+#p05 .legend .l1 {width:33%; padding-right:24px;}
+#p05 .legend .l2 {width:34%; padding-right:24px;}
+#p05 .legend .l3 {width:33%;}
+#p05 .legend .ver {font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; color:var(--ink);}
+#p05 .legend .ver span {color:var(--signal-text);}
+#p05 .legend .ttl {font-size:12px; font-weight:700; margin-top:5px;}
+#p05 .legend .txt {font-size:12px; line-height:1.55; color:var(--soft); margin-top:4px;}
+
+/* 06-build */
+#p06 .wrap {margin-top:17px; display:flex; gap:35px; flex:1;}
+#p06 .list {width:530px;}
+#p06 .row {display:grid; grid-template-columns:40px 1fr; gap:14px; padding:11px 0; border-top:1px solid var(--rule);}
+#p06 .row:last-child {border-bottom:1px solid var(--rule);}
+#p06 .key {font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--signal-text); padding-top:2.5px;}
+#p06 .nm {font-size:14.5px; font-weight:700;}
+#p06 .ds {font-size:12px; line-height:1.6; color:#2E3532; margin-top:4.5px;}
+#p06 .ds .mono {font-size:11px; color:var(--muted);}
+#p06 .vis {flex:1; display:flex; flex-direction:column; justify-content:center;}
+#p06 .vis .lbl {font-family:var(--mono); font-size:8px; letter-spacing:.14em; color:var(--ink);}
+#p06 .barline {margin-top:8px;}
+#p06 .barline .cap {font-family:var(--mono); font-size:8px; color:var(--muted); margin-bottom:4px;}
+#p06 .bar {height:28px;}
+#p06 .bar.old {width:215px; background:#CBD1CE;}
+#p06 .bar.new {width:170px; background:#111413;}
+#p06 .vis .delta {font-family:var(--mono); font-size:23px; letter-spacing:-.02em; margin-top:13px;}
+#p06 .vis .delta span {font-size:11px; letter-spacing:0; color:var(--muted); display:block; margin-top:3px;}
+#p06 .vis .note {margin-top:13px;}
+
+/* 07-architecture */
+#p07 .wrap {margin-top:16px; display:flex; gap:36px; flex:1;}
+#p07 .list {width:560px;}
+#p07 .row {display:grid; grid-template-columns:40px 1fr; gap:14px; padding:10.5px 0; border-top:1px solid var(--rule);}
+#p07 .row:last-child {border-bottom:1px solid var(--rule);}
+#p07 .key {font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--signal-text); padding-top:2.5px;}
+#p07 .nm {font-size:14px; font-weight:700;}
+#p07 .nm .mono {font-size:9.5px; font-weight:400; color:var(--muted); margin-left:6px;}
+#p07 .ds {font-size:12px; line-height:1.6; color:#2E3532; margin-top:4.5px;}
+#p07 .stages {flex:1; display:flex; flex-direction:column; justify-content:center;}
+#p07 .stages .lbl {font-family:var(--mono); font-size:8px; letter-spacing:.14em; color:var(--ink); margin-bottom:10px;}
+#p07 .stage {display:flex; align-items:center; gap:7px; padding:5.5px 0;}
+#p07 .dot {width:4.5px; height:4.5px; border:1px solid var(--ink); border-radius:50%; flex:0 0 auto;}
+#p07 .dot.fill {background:var(--ink);}
+#p07 .stage .t {font-family:var(--mono); font-size:10px; letter-spacing:.04em;}
+#p07 .stage .s {font-family:var(--mono); font-size:8px; color:var(--muted); margin-left:auto;}
+#p07 .conn {width:1px; height:13px; background:rgba(17,20,19,.22); margin-left:2px;}
+#p07 .stages .note {margin-top:12px;}
+
+/* 08-interlude */
+#p08 {background:#FFFFFF; font-family:var(--serif);}
+#p08 .top {font-family:var(--serif); font-size:9.5px; letter-spacing:.3em;}
+#p08 .rule {background:var(--ink);}
+#p08 .body {flex:1; display:flex; align-items:center; gap:39px;}
+#p08 .bar {width:1px; align-self:stretch; background:var(--ink); margin:33px 0;}
+#p08 .q {width:625px;}
+#p08 .q .en {font-size:32px; line-height:1.48; letter-spacing:-.01em;}
+#p08 .q .en i {font-style:italic;}
+#p08 .q .cn {margin-top:22px; font-family:var(--sans); font-size:14px; line-height:1.85; color:#3A3833; width:500px;}
+#p08 .side {flex:0 0 155px; align-self:flex-end; padding-bottom:32px; font-family:var(--sans); font-size:9.5px; line-height:1.8; color:var(--muted);}
+#p08 .side b {display:block; color:var(--ink); font-weight:700; font-size:10px; margin-bottom:4px;}
+#p08 .foot {font-family:var(--sans); font-size:9.5px;}
+
+/* 09-decision */
+#p09 .track {margin-top:42px; display:grid; grid-template-columns:repeat(4,1fr); gap:26px;}
+#p09 .st {border-top:1px solid var(--ink); padding-top:11px; position:relative;}
+#p09 .st .k {position:absolute; top:-1px; left:0; width:28px; height:1px; background:var(--signal);}
+#p09 .st .n {font-family:var(--mono); font-size:8px; letter-spacing:.16em; color:var(--signal-text);}
+#p09 .st .t {font-size:18px; font-weight:700; margin-top:6px; line-height:1.3;}
+#p09 .st .d {font-size:12px; line-height:1.72; color:#2E3532; margin-top:7px;}
+#p09 .pivot {margin-top:38px; display:flex; gap:32px; align-items:flex-start; border-top:1px solid var(--rule); padding-top:15px;}
+#p09 .pivot .big {font-family:var(--mono); font-size:20px; letter-spacing:-.01em; white-space:nowrap;}
+#p09 .pivot .big span {display:block; font-family:var(--sans); font-size:10px; letter-spacing:0; color:var(--muted); margin-top:5px;}
+#p09 .pivot .txt {font-size:12px; line-height:1.78; color:#2E3532;}
+#p09 .pivot .txt .hl {border-left:1px solid var(--signal); padding-left:9px; color:var(--muted); font-size:12px; margin-top:8px;}
+
+/* 10-reality */
+#p10 .wrap {margin-top:19px; display:flex; gap:38px; flex:1;}
+#p10 .list {width:505px;}
+#p10 .row {display:grid; grid-template-columns:40px 1fr; gap:14px; padding:12px 0; border-top:1px solid var(--rule);}
+#p10 .row:last-child {border-bottom:1px solid var(--rule);}
+#p10 .key {font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--signal-text); padding-top:2.5px;}
+#p10 .nm {font-size:15px; font-weight:700;}
+#p10 .ds {font-size:12px; line-height:1.6; color:#2E3532; margin-top:5px;}
+#p10 .side {flex:1; display:flex; flex-direction:column; justify-content:center;}
+#p10 .side .lbl {font-family:var(--mono); font-size:8px; letter-spacing:.14em; color:var(--ink);}
+#p10 .sponsor {margin-top:9px; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); padding:13px 0 15px;}
+#p10 .sponsor .url {font-family:var(--mono); font-size:13.5px; letter-spacing:-.01em; line-height:1.4;}
+#p10 .sponsor .d {font-size:12px; line-height:1.55; color:var(--muted); margin-top:7px;}
+#p10 .side .src {margin-top:13px;}
+#p10 .mark {width:34.5px; height:34.5px; margin-top:14px; opacity:.85;}
+
+        /* ---------- 960 画框微调 ---------- */
+        #p04 .row { padding: 5px 0; }
+        #p04 .why { margin-top: 10px; margin-bottom: 4px; }
+        #p04 .why div { font-size: 11px; line-height: 1.5; }
+        #p06 .wrap { margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="presentation-container" id="presentation">
+
+        <div class="slide slide-title active" id="p01" data-index="0">
+<div class="top">
+    <span>Yoyo Code · Matyáš Racek</span>
+    <span>Rust Compiler · 2026-10-19</span>
+  </div>
+  <div class="rule"></div>
+
+  <div class="head">
+    <div>
+      <div class="kicker">RUST 编译器年度观察</div>
+      <h1>十年来第一次，<br>欠下的技术债<em>开始还清</em></h1>
+      <p class="dek">2026 并不特殊在「活儿突然变多了」。特殊在：一批投了多年的项目，恰好在这一年同时开始付息。</p>
+    </div>
+    <svg class="mark" viewBox="0 0 144 144" height="144" width="144" xmlns="http://www.w3.org/2000/svg"><path d="m71.05 23.68c-26.06 0-47.27 21.22-47.27 47.27s21.22 47.27 47.27 47.27 47.27-21.22 47.27-47.27-21.22-47.27-47.27-47.27zm-.07 4.2a3.1 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm7.12 5.12a38.27 38.27 0 0 1 26.2 18.66l-3.67 8.28c-.63 1.43.02 3.11 1.44 3.75l7.06 3.13a38.27 38.27 0 0 1 .08 6.64h-3.93c-.39 0-.55.26-.55.64v1.8c0 4.24-2.39 5.17-4.49 5.4-2 .23-4.21-.84-4.49-2.06-1.18-6.63-3.14-8.04-6.24-10.49 3.85-2.44 7.85-6.05 7.85-10.87 0-5.21-3.57-8.49-6-10.1-3.42-2.25-7.2-2.7-8.22-2.7h-40.6a38.27 38.27 0 0 1 21.41-12.08l4.79 5.02c1.08 1.13 2.87 1.18 4 .09zm-44.2 23.02a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm74.15.14a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm-68.29.5h5.42v24.44h-10.94a38.27 38.27 0 0 1 -1.24-14.61l6.7-2.98c1.43-.64 2.08-2.31 1.44-3.74zm22.62.26h12.91c.67 0 4.71.77 4.71 3.8 0 2.51-3.1 3.41-5.65 3.41h-11.98zm0 17.56h9.89c.9 0 4.83.26 6.08 5.28.39 1.54 1.26 6.56 1.85 8.17.59 1.8 2.98 5.4 5.53 5.4h16.14a38.27 38.27 0 0 1 -3.54 4.1l-6.57-1.41c-1.53-.33-3.04.65-3.37 2.18l-1.56 7.28a38.27 38.27 0 0 1 -31.91-.15l-1.56-7.28c-.33-1.53-1.83-2.51-3.36-2.18l-6.43 1.38a38.27 38.27 0 0 1 -3.32-3.92h31.27c.35 0 .59-.06.59-.39v-11.06c0-.32-.24-.39-.59-.39h-9.15zm-14.43 25.33a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm46.05.14a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11z"/><path d="m115.68 70.95a44.63 44.63 0 0 1 -44.63 44.63 44.63 44.63 0 0 1 -44.63-44.63 44.63 44.63 0 0 1 44.63-44.63 44.63 44.63 0 0 1 44.63 44.63zm-.84-4.31 6.96 4.31-6.96 4.31 5.98 5.59-7.66 2.87 4.78 6.65-8.09 1.32 3.4 7.46-8.19-.29 1.88 7.98-7.98-1.88.29 8.19-7.46-3.4-1.32 8.09-6.65-4.78-2.87 7.66-5.59-5.98-4.31 6.96-4.31-6.96-5.59 5.98-2.87-7.66-6.65 4.78-1.32-8.09-7.46 3.4.29-8.19-7.98 1.88 1.88-7.98-8.19.29 3.4-7.46-8.09-1.32 4.78-6.65-7.66-2.87 5.98-5.59-6.96-4.31 6.96-4.31-5.98-5.59 7.66-2.87-4.78-6.65 8.09-1.32-3.4-7.46 8.19.29-1.88-7.98 7.98 1.88-.29-8.19 7.46 3.4 1.32-8.09 6.65 4.78 2.87-7.66 5.59 5.98 4.31-6.96 4.31 6.96 5.59-5.98 2.87 7.66 6.65-4.78 1.32 8.09 7.46-3.4-.29 8.19 7.98-1.88-1.88 7.98 8.19-.29-3.4 7.46 8.09 1.32-4.78 6.65 7.66 2.87z" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/></svg>
+  </div>
+
+  <div class="chartblock">
+    <div>
+      <div class="chart">
+        <svg viewBox="0 0 1240 250" aria-label="LLVM 升级对 rustc 性能影响的定性趋势">
+          <line x1="0" y1="215" x2="1240" y2="215" stroke="rgba(17,20,19,.22)"/>
+          <line x1="0" y1="150" x2="1240" y2="150" stroke="rgba(17,20,19,.08)"/>
+          <line x1="0" y1="85"  x2="1240" y2="85"  stroke="rgba(17,20,19,.08)"/>
+          <path d="M20 215 C 90 215, 120 246, 165 246 C 250 246, 300 205, 380 196 C 470 186, 520 178, 600 172 C 700 164, 760 158, 840 150 C 930 141, 1000 120, 1080 96 C 1150 75, 1190 62, 1230 54"
+                fill="none" stroke="#111413" stroke-width="2.5"/>
+          <line x1="165" y1="246" x2="165" y2="150" stroke="#F74C00" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <circle cx="165" cy="246" r="5" fill="#F74C00"/>
+          <text x="182" y="146" font-family="Noto Sans Mono CJK SC, monospace" font-size="17" fill="#BF3600">LLVM 10 · −10%</text>
+          <text x="0" y="209" font-family="Noto Sans Mono CJK SC, monospace" font-size="16" fill="#6C7572">0</text>
+          <circle cx="1230" cy="54" r="6" fill="#111413"/>
+          <text x="1230" y="34" text-anchor="end" font-family="Noto Sans Mono CJK SC, monospace" font-size="17" fill="#111413">LLVM 23</text>
+        </svg>
+      </div>
+      <div class="zones">
+        <span class="z1">升级 = 少坏一些</span>
+        <span class="z2">好坏参半：icount 绿、wall time 红</span>
+        <span class="z3">几乎全正向</span>
+      </div>
+    </div>
+    <div class="sidenote note">
+      <b>图注</b>
+      据原文叙述整理的定性趋势，不是实测数值。转折点是 @nikic 的《Make LLVM fast again》：LLVM 开始像 rustc 一样追踪自己的性能。
+    </div>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p02" data-index="1">
+<div class="top">
+    <span>论点</span>
+    <span>YOYO CODE</span>
+  </div>
+  <div class="rule"></div>
+
+  <div class="body">
+    <div class="bar"></div>
+    <div class="q">
+      <p class="en">Big things don't happen in big-bang projects coming out of nowhere, but rather as <i>consequences of sustained long-term investments</i> into a healthy system.</p>
+      <p class="cn">大东西不会从天上掉下来，也不会由一个横空出世的「大爆炸项目」带来。它只是长期、持续地投进一个健康系统里的钱，最后长出来的结果。</p>
+    </div>
+    <div class="side">
+      <b>这也是全篇的读法</b>
+      所以下面每一节，讲的都不是某个新特性，而是一笔投入和它今年还回来的东西。
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Matyáš Racek</span>
+    <span>2026 年 10 月 19 日</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p03" data-index="2">
+<div class="top">
+    <span><span class="sec">03</span> · 类型系统 / Type System</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>两笔最大的债，同年进入收尾</h2>
+  <p class="dek">这两件事加起来，等于把类型系统的一大块重写了一遍。</p>
+
+  <div class="rows">
+    <div class="row">
+      <div class="key">T1</div>
+      <div class="bt">下一代 trait solver
+        <small>≈ 10 年 · 多种形态，反复重来</small>
+      </div>
+      <div class="body">
+        <p>修掉一批健全性 bug，同时一次性解开它挡住的一长串问题，包括 async Rust 里的大麻烦，和各种 <span class="mono">impl Trait</span> 的限制。</p>
+        <p class="hl">一笔技术债清掉之后，一批真正懂类型系统的人也腾出手来，可以去做新东西了。</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="key">T2</div>
+      <div class="bt">Polonius 借用检查器
+        <small>长期项目 · 同样是多年的等待</small>
+      </div>
+      <div class="body">
+        <p>新的借用检查器实现，让更多代码能编译通过，并连带解锁一批相关特性，包括（希望有一天）内部引用。</p>
+        <p class="hl">对编译器本身的影响没有新 solver 那么大，但仍然是件大事。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>两条线在同一时期收尾，2026 才显得像是「突然」发生了很多事。</span>
+    <span class="en">next solver / polonius</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p04" data-index="3">
+<div class="top">
+    <span><span class="sec">04</span> · 性能 / Perf</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>停滞一两年之后，同时开花</h2>
+  <p class="dek">不是某一项大突破，是四件事叠在一起：新人进来、老人腾出手、工具变好、架构清理解锁新机会。</p>
+
+  <div class="rows">
+    <div class="row">
+      <div class="key">PF</div>
+      <div class="nm">并行前端</div>
+      <div class="ds">@SparrowLi 重启了这项多年停摆的工作，@petrochenkov 现在驱动它。设计几乎没人满意，但看不到更好的替代，只能一条条磨完。</div>
+      <div class="st">接近稳定</div>
+    </div>
+    <div class="row">
+      <div class="key">ME</div>
+      <div class="nm">MIR 层面的 move 消除</div>
+      <div class="ds">@Amanieu 提出。消掉 LLVM 优化不掉的拷贝。Rust 比 C/C++ 产生更多 move，所以这件事对 Rust 特别值。编译期与运行期同时变快。</div>
+      <div class="st">编译期 + 运行期</div>
+    </div>
+    <div class="row">
+      <div class="key">PM</div>
+      <div class="nm">Polymorphization</div>
+      <div class="ds">第三次实验，这次是 Swift 风格：把泛型参数的 layout 当参数传。有运行时开销，可开关。@camelid 驱动。</div>
+      <div class="st">实验阶段</div>
+    </div>
+    <div class="row">
+      <div class="key">CC</div>
+      <div class="nm">check 与 build 共享缓存</div>
+      <div class="ds">@blyxyas 的项目目标。目标本身更大，但共享产物是最好认的那个结果，想要了很多年。</div>
+      <div class="st">进行中</div>
+    </div>
+    <div class="row">
+      <div class="key">TM</div>
+      <div class="nm">target 目录瘦身</div>
+      <div class="ds">no-embed-metadata 默认开启，target 目录小 5–30%；新的 build-dir 布局带来细粒度锁与跨 workspace 缓存。</div>
+      <div class="st">−5~30%</div>
+    </div>
+  </div>
+
+  <div class="why">
+    <div><b>为什么是现在</b>一个想法会在几个人脑子里同时转。人们被彼此的 PR 启发，去做相关的事。</div>
+    <div><b>回归管理</b>把 tree ops 和性能分诊接起来：合并的人顺手看这次合并的性能影响，响应时间因此缩短。</div>
+    <div><b>代价</b>解释结果、诊断回归，有时只需要有人多说几句，而那个人每天看这些数字已经看了很多年。</div>
+  </div>
+
+  <div class="foot">
+    <span>Conway 定律依然是定律：组织结构会从技术结果里透出来。</span>
+    <span class="en">"Turns out that Conway's law is still a law."</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p05" data-index="4">
+<div class="top">
+    <span><span class="sec">05</span> · 性能 / LLVM</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>LLVM 23：第一次「几乎全是好的」</h2>
+  <p class="dek">LLVM 长期是 rustc 性能的拖累项。转折点在 @nikic 那篇《Make LLVM fast again》，LLVM 开始像 rustc 一样追踪自己的性能。</p>
+
+  <div class="chart">
+    <svg viewBox="0 0 1740 392" aria-label="LLVM 升级对 rustc 性能影响的定性趋势">
+      <line x1="0" y1="352" x2="1740" y2="352" stroke="rgba(17,20,19,.22)"/>
+      <line x1="0" y1="264" x2="1740" y2="264" stroke="rgba(17,20,19,.07)"/>
+      <line x1="0" y1="176" x2="1740" y2="176" stroke="rgba(17,20,19,.07)"/>
+      <line x1="0" y1="88"  x2="1740" y2="88"  stroke="rgba(17,20,19,.07)"/>
+
+      <path d="M24 352 C 130 352, 174 380, 240 380 C 358 380, 428 336, 540 324 C 664 310, 742 300, 856 291 C 996 280, 1086 271, 1196 260 C 1322 247, 1424 212, 1530 172 C 1608 142, 1666 118, 1708 100"
+            fill="none" stroke="#111413" stroke-width="3"/>
+
+      <line x1="240" y1="380" x2="240" y2="262" stroke="#F74C00" stroke-width="1.5" stroke-dasharray="3 4"/>
+      <circle cx="240" cy="380" r="6" fill="#F74C00"/>
+      <text x="258" y="256" font-family="Noto Sans Mono CJK SC, monospace" font-size="18" fill="#BF3600">LLVM 10 · −10%</text>
+
+      <circle cx="1196" cy="260" r="5" fill="#111413"/>
+      <line x1="1196" y1="260" x2="1196" y2="234" stroke="#111413" stroke-width="1"/>
+      <text x="1196" y="222" text-anchor="middle" font-family="Noto Sans Mono CJK SC, monospace" font-size="18" fill="#111413">LLVM 22</text>
+
+      <circle cx="1708" cy="100" r="7" fill="#111413"/>
+      <line x1="1708" y1="100" x2="1708" y2="74" stroke="#111413" stroke-width="1"/>
+      <text x="1708" y="60" text-anchor="end" font-family="Noto Sans Mono CJK SC, monospace" font-size="18" fill="#111413">LLVM 23</text>
+
+      <text x="0" y="340" font-family="Noto Sans Mono CJK SC, monospace" font-size="16" fill="#6C7572">基线 0</text>
+      <text x="0" y="24" font-family="Noto Sans Mono CJK SC, monospace" font-size="16" fill="#6C7572">对 rustc 的性能影响（定性，非实测数值）</text>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <div class="l1">
+      <div class="ver"><span>LLVM 10</span> · 长期拖累</div>
+      <div class="ttl">一次升级带回 10%</div>
+      <div class="txt">从这之后，rustc 的 LLVM 升级基本是「坏多好少」，然后慢慢变成「少坏一些」。</div>
+    </div>
+    <div class="l2">
+      <div class="ver"><span>LLVM 22</span> · 好坏参半</div>
+      <div class="ttl">icount 全绿，wall time 全红</div>
+      <div class="txt">基准好看，实际墙钟时间几乎处处变慢。这一年的结论是「还不行」。</div>
+    </div>
+    <div class="l3">
+      <div class="ver"><span>LLVM 23</span> · 几乎全正向</div>
+      <div class="ttl">两头都好了</div>
+      <div class="txt">新优化（在 bootstrap 时也在优化编译器本身）加上 LLVM 自己变快，第一次没有附加条件。</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>以前是「升 LLVM 要赌一把」，现在升级的默认预期变成了正向。</span>
+    <span class="en">@nikic / Make LLVM fast again</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p06" data-index="5">
+<div class="top">
+    <span><span class="sec">06</span> · 构建 / Cargo</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>构建这一侧，能摸到的变多了</h2>
+  <p class="dek">这几件事不改语言，但你每天都会碰到。</p>
+
+  <div class="wrap">
+    <div class="list">
+      <div class="row">
+        <div class="key">B1</div>
+        <div>
+          <div class="nm">cargo check 与 cargo build 共享缓存</div>
+          <div class="ds">@blyxyas 的项目目标。目标本身比名字更宽，但「check 过的东西 build 能直接用」是最好认的那个结果。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">B2</div>
+        <div>
+          <div class="nm">no-embed-metadata 默认开启</div>
+          <div class="ds">已公布的改动：target 目录体积下降 5–30%，视工作负载而定。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">B3</div>
+        <div>
+          <div class="nm">新的 build-dir 布局</div>
+          <div class="ds">又是那种「大改内部结构、顺手解锁别的东西」的活：细粒度锁 target 目录、跨 workspace 缓存。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">B4</div>
+        <div>
+          <div class="nm">no-link / link-only</div>
+          <div class="ds">@bjorn3 在修这两个 flag 的支持，让 build script 和 proc macro 可以流水线化。同样是先修一长串内部问题，然后突然解锁一大块。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vis">
+      <div class="lbl">TARGET 目录体积</div>
+      <div class="barline">
+        <div class="cap">之前</div>
+        <div class="bar old"></div>
+      </div>
+      <div class="barline">
+        <div class="cap">no-embed-metadata 默认开启之后</div>
+        <div class="bar new"></div>
+      </div>
+      <div class="delta">−5~30%
+        <span>按原文给出的区间取的示意宽度，不是实测值</span>
+      </div>
+      <div class="note note">
+        <b>为什么值得画出来</b>
+        「少几十 MB」听起来小，但它是每个开发者磁盘上真实存在的东西。
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>这些东西不会出现在 release notes 的第一屏，却每天都在发生。</span>
+    <span class="en">cargo / build-dir / metadata</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p07" data-index="6">
+<div class="top">
+    <span><span class="sec">07</span> · 架构 / Architecture</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>地基：它们本身不是新闻</h2>
+  <p class="dek">但别的新闻能不能发生，取决于它们。</p>
+
+  <div class="wrap">
+    <div class="list">
+      <div class="row">
+        <div class="key">A1</div>
+        <div>
+          <div class="nm">统一属性系统<span class="mono">@jdonszelmann</span></div>
+          <div class="ds">两年前开始，几天前最后一个属性迁移完成。属性怎么检查，从此有统一的地方，诊断改进也随之解锁。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">A2</div>
+        <div>
+          <div class="nm">query 系统重构<span class="mono">@Zalathar / @nnethercote</span></div>
+          <div class="ds">性能变好，但更重要的是变好懂了。「看不懂」本身就是过去最大的拦路石。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">A3</div>
+        <div>
+          <div class="nm">expansion-time evaluation<span class="mono">@oli-obk</span></div>
+          <div class="ds">在为「展开阶段就能求值」铺路。这类活没有发布会，只有一步一步。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">A4</div>
+        <div>
+          <div class="nm">
+const generics<span class="mono">多位贡献者</span></div>
+          <div class="ds">一批工作让 const generics 可以继续往前走。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stages">
+      <div class="lbl">编译阶段 · 顺序曾经是天花板</div>
+      <div class="stage"><span class="dot"></span><span class="t">解析</span><span class="s">parse</span></div>
+      <div class="conn"></div>
+      <div class="stage"><span class="dot"></span><span class="t">展开</span><span class="s">expand</span></div>
+      <div class="conn"></div>
+      <div class="stage"><span class="dot"></span><span class="t">HIR</span><span class="s">name / type</span></div>
+      <div class="conn"></div>
+      <div class="stage"><span class="dot fill"></span><span class="t">MIR</span><span class="s">borrow / opt</span></div>
+      <div class="conn"></div>
+      <div class="stage"><span class="dot fill"></span><span class="t">LLVM</span><span class="s">codegen</span></div>
+      <div class="note note">
+        <b>共同主题</b>
+        这些工作让编译器能在更多阶段用上同一种能力。过去很多限制并不是「做不到」，而是「必须严格按阶段顺序来」。
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>大东西不会从天上掉下来。它们是从这些没人拍照的地方长出来的。</span>
+    <span class="en">attributes / queries / ETE</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p08" data-index="7">
+<div class="top">
+    <span>幕间</span>
+    <span>YOYO CODE</span>
+  </div>
+  <div class="rule"></div>
+
+  <div class="body">
+    <div class="bar"></div>
+    <div class="q">
+      <p class="en">All Hands was a turning point where everybody could <i>recharge, refocus, and take the positive energy back</i> to the project.</p>
+      <p class="cn">All Hands 是一个转折点：所有人都在那里重新充了电，重新看清了方向，然后把那股力气带回项目里。</p>
+    </div>
+    <div class="side">
+      <b>这一年并不全是好消息</b>
+      年初有人失去资助，围绕 AI 政策吵得很凶；All Hands 前几天，政策草案被贴到社交媒体上，小小的 moderation 团队和一些人过了一个很紧张的周末。
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>下面的部分，从这里开始变得私人。</span>
+    <span>Matyáš Racek</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p09" data-index="8">
+<div class="top">
+    <span><span class="sec">09</span> · 第二幕 / And Me</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>然后我决定：这就是我想做的事</h2>
+  <p class="dek">一边是手上的活慢慢变成维护，一边是对 web 方向的厌倦。我想要更技术、更难的东西，但一直选不出来。</p>
+
+  <div class="track">
+    <div class="st">
+      <div class="k"></div>
+      <div class="n">S1 · 旁观</div>
+      <div class="t">看了好几年</div>
+      <div class="d">一直在旁边看，后来开始参与编译性能的分诊，但没有真正下场。</div>
+    </div>
+    <div class="st">
+      <div class="k"></div>
+      <div class="n">S2 · 选项</div>
+      <div class="t">一个都不心动</div>
+      <div class="d">几个方向都考虑过，就是选不出来。用近藤麻理惠的话说：没有一个「sparks joy」。</div>
+    </div>
+    <div class="st">
+      <div class="k"></div>
+      <div class="n">S3 · 邀请</div>
+      <div class="t">那封邮件</div>
+      <div class="d">某个低气压的晚上，All Hands 的邀请到了。我早就报了名，但从没指望能被选上，就把它当成某种暗示，订了票。</div>
+    </div>
+    <div class="st">
+      <div class="k"></div>
+      <div class="n">S4 · 决定</div>
+      <div class="t">不再犹豫</div>
+      <div class="d">那一周之后，所有怀疑都没了。我很确定：这就是我想做的事。</div>
+    </div>
+  </div>
+
+  <div class="pivot">
+    <div class="big">"sparks joy"
+      <span>近藤麻理惠的整理法标准</span>
+    </div>
+    <div class="txt">
+      在那之前，我一直觉得「想去做」是够的理由。真正缺的是一个不再自我怀疑的瞬间。
+      <div class="hl">All Hands 让我想起：我人生里有很大一块，几乎没机会和任何人分享，尤其是现实生活里。</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>和真正做这件事的人聊，是另一个层级的事：他们听得懂你在说什么，而且深得多。</span>
+    <span class="en">Rust All Hands</span>
+  </div>
+        </div>
+
+        <div class="slide slide-content" id="p10" data-index="9">
+<div class="top">
+    <span><span class="sec">10</span> · 现实 / Funding</span>
+    <span>Rust Compiler · 2026</span>
+  </div>
+  <div class="rule"></div>
+
+  <h2>剩下的不是决心问题，是钱的问题</h2>
+  <p class="dek">这个项目里，没有一家叫「Rust inc.」的公司可以投简历。</p>
+
+  <div class="wrap">
+    <div class="list">
+      <div class="row">
+        <div class="key">R1</div>
+        <div>
+          <div class="nm">资助是分散的</div>
+          <div class="ds">项目目标、驻留维护者计划、新的资助团队，以及像 Hexcat 这样雇人做开源的公司。剩下的部分靠连接和信任，而信任只能慢慢攒。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">R2</div>
+        <div>
+          <div class="nm">已经答应的事</div>
+          <div class="ds">如果有足够的资金，我会接下「缩小 target 目录」这个项目目标。这也是全篇里最具体、最容易兑现的一件。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="key">R3</div>
+        <div>
+          <div class="nm">MiR 申请</div>
+          <div class="ds">递了，但资金有限，有更重要的领域要先拿到这笔钱。所以短期内不指望。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="lbl">如果你想支持</div>
+      <div class="sponsor">
+        <div class="url">github.com/sponsors/<br>panstromek</div>
+        <div class="d">用来支持一些编译器性能方面的工作。</div>
+      </div>
+      <div class="note src">
+        <b>原文</b>
+        yoyo-code.com<br>2026 / 10 / 19
+      </div>
+      <svg class="mark" viewBox="0 0 144 144" height="144" width="144" xmlns="http://www.w3.org/2000/svg"><path d="m71.05 23.68c-26.06 0-47.27 21.22-47.27 47.27s21.22 47.27 47.27 47.27 47.27-21.22 47.27-47.27-21.22-47.27-47.27-47.27zm-.07 4.2a3.1 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm7.12 5.12a38.27 38.27 0 0 1 26.2 18.66l-3.67 8.28c-.63 1.43.02 3.11 1.44 3.75l7.06 3.13a38.27 38.27 0 0 1 .08 6.64h-3.93c-.39 0-.55.26-.55.64v1.8c0 4.24-2.39 5.17-4.49 5.4-2 .23-4.21-.84-4.49-2.06-1.18-6.63-3.14-8.04-6.24-10.49 3.85-2.44 7.85-6.05 7.85-10.87 0-5.21-3.57-8.49-6-10.1-3.42-2.25-7.2-2.7-8.22-2.7h-40.6a38.27 38.27 0 0 1 21.41-12.08l4.79 5.02c1.08 1.13 2.87 1.18 4 .09zm-44.2 23.02a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm74.15.14a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm-68.29.5h5.42v24.44h-10.94a38.27 38.27 0 0 1 -1.24-14.61l6.7-2.98c1.43-.64 2.08-2.31 1.44-3.74zm22.62.26h12.91c.67 0 4.71.77 4.71 3.8 0 2.51-3.1 3.41-5.65 3.41h-11.98zm0 17.56h9.89c.9 0 4.83.26 6.08 5.28.39 1.54 1.26 6.56 1.85 8.17.59 1.8 2.98 5.4 5.53 5.4h16.14a38.27 38.27 0 0 1 -3.54 4.1l-6.57-1.41c-1.53-.33-3.04.65-3.37 2.18l-1.56 7.28a38.27 38.27 0 0 1 -31.91-.15l-1.56-7.28c-.33-1.53-1.83-2.51-3.36-2.18l-6.43 1.38a38.27 38.27 0 0 1 -3.32-3.92h31.27c.35 0 .59-.06.59-.39v-11.06c0-.32-.24-.39-.59-.39h-9.15zm-14.43 25.33a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11zm46.05.14a3.11 3.11 0 0 1 3.02 3.11 3.11 3.11 0 0 1 -6.22 0 3.11 3.11 0 0 1 3.2-3.11z"/><path d="m115.68 70.95a44.63 44.63 0 0 1 -44.63 44.63 44.63 44.63 0 0 1 -44.63-44.63 44.63 44.63 0 0 1 44.63-44.63 44.63 44.63 0 0 1 44.63 44.63zm-.84-4.31 6.96 4.31-6.96 4.31 5.98 5.59-7.66 2.87 4.78 6.65-8.09 1.32 3.4 7.46-8.19-.29 1.88 7.98-7.98-1.88.29 8.19-7.46-3.4-1.32 8.09-6.65-4.78-2.87 7.66-5.59-5.98-4.31 6.96-4.31-6.96-5.59 5.98-2.87-7.66-6.65 4.78-1.32-8.09-7.46 3.4.29-8.19-7.98 1.88 1.88-7.98-8.19.29 3.4-7.46-8.09-1.32 4.78-6.65-7.66-2.87 5.98-5.59-6.96-4.31 6.96-4.31-5.98-5.59 7.66-2.87-4.78-6.65 8.09-1.32-3.4-7.46 8.19.29-1.88-7.98 7.98 1.88-.29-8.19 7.46 3.4 1.32-8.09 6.65 4.78 2.87-7.66 5.59 5.98 4.31-6.96 4.31 6.96 5.59-5.98 2.87 7.66 6.65-4.78 1.32 8.09 7.46-3.4-.29 8.19 7.98-1.88-1.88 7.98 8.19-.29-3.4 7.46 8.09 1.32-4.78 6.65 7.66 2.87z" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/></svg>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>我不需要赶时间。所以我会继续做下去，直到把这件事做成。</span>
+    <span class="en">"I'll keep working until I figure something out."</span>
+  </div>
+        </div>
+
+        <div class="navigation-bar">
+            <button class="nav-arrow" id="prevBtn">&#9664;</button>
+            <div class="dot-indicators" id="dotIndicators"></div>
+            <button class="nav-arrow" id="nextBtn">&#9654;</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const slides = document.querySelectorAll('.slide');
+            const total = slides.length;
+            let current = 0;
+            const dotContainer = document.getElementById('dotIndicators');
+            for (let i = 0; i < total; i++) {
+                const dot = document.createElement('button');
+                dot.className = 'nav-dot';
+                dot.addEventListener('click', () => goTo(i));
+                dotContainer.appendChild(dot);
+            }
+            const dots = document.querySelectorAll('.nav-dot');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            function updateSlide(index) {
+                slides.forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+                const cur = slides[index];
+                cur.style.display = 'flex';
+                cur.classList.add('active');
+                dots.forEach(d => d.classList.remove('active'));
+                dots[index].classList.add('active');
+                current = index;
+                prevBtn.disabled = index === 0;
+                nextBtn.disabled = index === total - 1;
+            }
+            function goTo(i) { if (i >= 0 && i < total) updateSlide(i); }
+            prevBtn.addEventListener('click', () => { if (current > 0) goTo(current - 1); });
+            nextBtn.addEventListener('click', () => { if (current < total - 1) goTo(current + 1); });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); if (current < total - 1) goTo(current + 1); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); if (current > 0) goTo(current - 1); }
+                else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+                else if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+            });
+            updateSlide(0);
+        })();
+    </script>
+</body>
+</html>

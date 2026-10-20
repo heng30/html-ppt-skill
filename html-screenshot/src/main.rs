@@ -85,6 +85,41 @@ fn parse_range(range: &str, total: usize) -> Vec<usize> {
     indices
 }
 
+/// A per-run Chromium profile directory. Using a fresh directory avoids the
+/// `SingletonLock` collision that happens when a previous run's browser process
+/// was killed and kept `/tmp/chromiumoxide-runner` occupied.
+struct TempProfile(PathBuf);
+
+impl TempProfile {
+    fn new() -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!(
+            "html-screenshot-profile-{}-{}",
+            std::process::id(),
+            nanos
+        ));
+        Self(dir)
+    }
+}
+
+impl Drop for TempProfile {
+    fn drop(&mut self) {
+        // Chromium flushes its cache while shutting down and can recreate parts of
+        // the profile right after deletion, so keep deleting until it stays gone.
+        for _ in 0..40 {
+            if !self.0.exists() {
+                return;
+            }
+            let _ = std::fs::remove_dir_all(&self.0);
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
 fn invert_brightness(img: &mut DynamicImage) {
     let rgba_img = img.to_rgba8();
     let mut output = rgba_img.clone();
@@ -293,8 +328,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let browser_width = 1920u32;
     let browser_height = 3840u32; // 2x 1080p height for headroom
 
+    let profile = TempProfile::new();
+
     let browser_config = BrowserConfig::builder()
         .chrome_executable(chrome_path)
+        .user_data_dir(&profile.0)
         .arg("--no-sandbox")
         .arg("--disable-gpu")
         .arg("--disable-dev-shm-usage")
@@ -340,15 +378,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("Found {} slides", total_slides);
 
     if total_slides == 0 {
-        eprintln!("Error: No slides found in the HTML file.");
-        std::process::exit(1);
+        return Err("No slides found in the HTML file.".into());
     }
 
     // Parse range
     let slide_indices = parse_range(&args.range, total_slides);
     if slide_indices.is_empty() {
-        eprintln!("Error: No valid slides in the specified range.");
-        std::process::exit(1);
+        return Err("No valid slides in the specified range.".into());
     }
     eprintln!(
         "Exporting slide(s): {}",

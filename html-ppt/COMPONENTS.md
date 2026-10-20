@@ -1,6 +1,8 @@
 # 组件词汇表
 
-html-ppt 的组件参考。类名只许用本文件出现过的，样式只许从 [`light-template.html`](light-template.html) 整段复制。
+代码模板 [`coding-template.html`](coding-template.html) 的组件参考。类名只许用本文件出现过的，样式只许从模板整段复制。
+
+非代码文章使用另一套模板，见 [`ARTICLE-COMPONENTS.md`](ARTICLE-COMPONENTS.md)；两套视觉系统不要混用。
 
 ---
 
@@ -340,4 +342,4 @@ if less_than(boundaries[middle], value) {
 --transition: 0.3s ease;
 ```
 
-这套令牌 + 等宽标签 + hairline + 单一强调色构成 html-ppt 的亮色视觉系统。**值一个字都不许改**；需要新颜色时用现有变量的透明度，不要新增色值。
+这套令牌 + 等宽标签 + hairline + 单一强调色构成代码模板的亮色视觉系统。**值一个字都不许改**；需要新颜色时用现有变量的透明度，不要新增色值。

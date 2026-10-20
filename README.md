@@ -6,11 +6,14 @@
 
 ```
 html-ppt-skill/
-├── html-ppt/                  # 幻灯片生成 Skill（模板 + 组件词汇表 + 工作流）
-│   ├── SKILL.md               # 主工作流：分析→分页→生成HTML→验证→讲解稿→截图
-│   ├── COMPONENTS.md          # 组件词汇表：所有可用 HTML 组件及用法
-│   └── light-template.html    # 亮色主题模板（CSS 变量 + 导航栏 JS）
-└── html-screenshot/           # Rust 命令行工具：HTML 幻灯片逐页截图为 PNG
+├── html-ppt/                  # 幻灯片生成 Skill（双模板 + 组件文档 + 工作流）
+│   ├── SKILL.md               # 主工作流：分析→选模板→分页→生成→验证→讲解稿→截图
+│   ├── COMPONENTS.md          # 代码模板组件词汇表
+│   ├── ARTICLE-COMPONENTS.md  # 非代码模板版式与组件参考
+│   ├── coding-template.html   # 代码密集文章：单文件 960×540，底部导航栏
+│   └── article-template/      # 非代码文章：单文件 960×540，底部导航栏
+│       └── index.html
+└── html-screenshot/           # Rust 命令行工具：单文件 HTML 幻灯片逐页截图为 PNG
     ├── Cargo.toml
     ├── Makefile
     ├── src/main.rs
@@ -21,20 +24,29 @@ html-ppt-skill/
 
 一个 pi skill，将文章自动转化为精美的 HTML 幻灯片演示文稿。
 
+### 模板选型
+
+| 模板 | 适用文章 | 产出 |
+|------|----------|------|
+| `article-template/index.html` | 非代码文章：观点、叙事、案例、行业分析、数据图表 | 单个自包含 HTML（960×540），底部导航栏 |
+| `coding-template.html` | 代码密集文章：大量代码例子、API、配置 | 单个自包含 HTML（960×540），底部导航栏 |
+
+可展示代码 ≥ 3 段，或核心论点靠代码支撑，走代码模板；其余走非代码模板。
+
 ### 工作流
 
 | 步骤 | 说明 | 完成标准 |
 |------|------|----------|
-| 1. 分析文章 | 提取标题、副标题、作者、日期、关键词；按内容类型（prose/code/data/list/callout）划分章节 | 每章标注内容类型，无遗漏 |
-| 2. 分页 | 第 0 页标题页，第 1…N-1 页内容页（一章一页），第 N 页总结页 | 章节与页一一对应 |
-| 3. 生成 HTML | 从模板复制 CSS/JS，按 COMPONENTS.md 选用组件，输出单文件 HTML | 类名出自词汇表，CSS 变量与模板一致 |
-| 4. 验证 | 标签闭合、data-index 连续、语言标注、导航栏完整等 | 全部检查项通过 |
+| 1. 分析文章 | 提取标题、副标题、作者、日期、关键词；按内容类型划分章节 | 每章标注内容类型，无遗漏 |
+| 2. 选模板与分页 | 非代码：8–14 页；代码：标题页 + 内容页 + 总结页 | 章节与页一一对应 |
+| 3. 生成 HTML | 非代码：复制模板单文件，替换页面；代码：单文件套组件 | 对应文档的约束全部满足 |
+| 4. 验证 | 画框尺寸、组件、路径、内容真实性 | 全部检查项通过 |
 | 5. 讲解稿 | 为每页写口语化中文讲解词，保存为 `*-script.md` | 页数对应，全文连贯 |
-| 6. 截图 | 调用 html-screenshot 逐页输出 PNG | 图片清晰可读 |
+| 6. 截图 | 两套模板都用 `html-screenshot` | 图片清晰可读 |
 
 ### 组件体系
 
-所有幻灯片组件定义在 `COMPONENTS.md` 中，包括：
+代码模板的组件定义在 `COMPONENTS.md` 中，包括：
 
 - **标题页** — `.slide-title`（pretitle / h1 / subtitle / meta）
 - **内容页** — `.slide-content`（section-label / h2）
@@ -50,7 +62,11 @@ html-ppt-skill/
 - **标签** — `span.tag`（`.fast` / `.slow`）
 - **导航栏** — `.navigation-bar`（固定结构，不许改动）
 
+非代码模板的页面骨架、行列表、数字组、引语、图表、配图与局部样式写法见 `ARTICLE-COMPONENTS.md`。
+
 ### 约束
+
+**代码模板**
 
 1. CSS 变量块与模板逐字一致，不许修改
 2. CSS 类名取自 COMPONENTS.md 词汇表
@@ -59,6 +75,14 @@ html-ppt-skill/
 5. 外部资源仅限 Highlight.js CDN 及行号插件
 6. 每页 `.slide` 含 `data-index`，从 0 连续递增
 7. 行内视觉元素仅用 `style` 属性，不引入新 CSS 规则
+
+**非代码模板**
+
+1. 输出单个自包含 HTML，导航栏 HTML 与 JS 从模板原样复制
+2. `:root` 与基础版式不改，页面差异用 `#pNN` 作用域的局部 `<style>`
+3. 画框固定 960×540，内容溢出就拆页
+4. 全篇单一强调色，不放代码块、内容投影、圆角卡片与渐变
+5. 每页 `.slide` 含 `data-index`，从 0 连续
 
 ---
 
