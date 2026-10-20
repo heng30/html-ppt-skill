@@ -4,26 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
     <title>sidereon · GNSS与航天动力学Rust库</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
     <style>
         :root {
-            --bg-page: #f8f6f3;
-            --bg-slide: #ffffff;
-            --text-primary: #2c2c2c;
-            --text-heading: #1f3a3f;
-            --text-secondary: #5a5a5a;
-            --text-muted: #8c8c8c;
-            --accent: #c44f2c;
-            --accent-soft: #d9704a;
-            --accent-blue: #2c6280;
-            --code-bg: #f4f1ec;
-            --code-border: #cfc9bf;
-            --code-text: #2c2c2c;
-            --tag-bg: #ece6db;
-            --tag-text: #6b5f4e;
-            --divider: #e2ddd4;
-            --shadow: 0 2px 18px rgba(0, 0, 0, 0.06);
-            --shadow-hover: 0 4px 26px rgba(0, 0, 0, 0.09);
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            --font-mono: 'Noto Sans Mono CJK SC', 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Menlo', 'Consolas', monospace;
+            --bg-page: #e9e6de;
+            --bg-slide: #fdfdfb;
+            --ink: #111413;
+            --text-primary: #22272c;
+            --text-heading: #111413;
+            --text-secondary: #3c4441;
+            --text-muted: #6c7572;
+            --accent: #1f4bd8;
+            --accent-ink: #101b3b;
+            --rule: rgba(17, 20, 19, 0.14);
+            --rule-strong: rgba(17, 20, 19, 0.34);
+            --code-bg: #f7f6f2;
+            --code-border: rgba(17, 20, 19, 0.12);
+            --code-text: #22272c;
+            --tag-bg: #f1efea;
+            --tag-text: #5a6268;
+            --success: #2f7a4f;
+            --warn: #9a6b12;
+            --danger: #b03a2e;
+            --info: #1f5fa8;
+            --shadow: 0 1px 2px rgba(20, 23, 26, 0.05), 0 18px 44px rgba(20, 23, 26, 0.08);
             --transition: 0.3s ease;
         }
 
@@ -33,7 +38,7 @@
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            font-family: var(--font-sans);
             background: var(--bg-page);
             color: var(--text-primary);
             display: flex;
@@ -52,286 +57,346 @@
             flex-direction: column;
             align-items: center;
         }
+
+        /* ---------- 画框：固定 960×540，内容用 flex 填满 ---------- */
         .slide {
             display: none;
+            flex-direction: column;
             background: var(--bg-slide);
             box-shadow: var(--shadow);
-            padding: 44px 48px 40px;
-            min-height: 500px;
+            padding: 35px 45px 29px;
+            min-height: 540px;
             width: 100%;
             transition: opacity var(--transition), transform var(--transition);
             animation: fadeSlide 0.4s ease-out;
             opacity: 0;
             transform: translateY(10px);
             position: relative;
-            border-radius: 2px;
             text-align: left;
         }
         .slide.active {
-            display: block;
+            display: flex;
             opacity: 1;
             transform: translateY(0);
-        }
-        .slide-title.active {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: flex-start;
-            text-align: left;
-            min-height: 540px;
-            padding-top: 56px;
         }
         @keyframes fadeSlide {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .slide-title .pretitle {
-            font-size: 0.8rem;
-            letter-spacing: 0.13em;
+
+        /* ---------- 顶栏 / 页脚 ---------- */
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 14px;
-            font-weight: 600;
+            color: var(--text-muted);
         }
+        .top .sec { color: var(--accent); }
+        .rule {
+            height: 1px;
+            background: var(--rule);
+            margin-top: 8px;
+            flex: 0 0 auto;
+        }
+        .foot {
+            margin-top: auto;
+            border-top: 1px solid var(--rule);
+            padding-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 24px;
+            font-size: 0.66rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .foot .en {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        /* ---------- 标题页 ---------- */
         .slide-title h1 {
-            font-size: 2.5rem;
+            font-size: 3rem;
             font-weight: 700;
             color: var(--text-heading);
-            line-height: 1.2;
-            margin-bottom: 10px;
-            letter-spacing: -0.01em;
+            line-height: 1.12;
+            letter-spacing: -0.02em;
+            margin-top: 4px;
         }
         .slide-title .subtitle {
-            font-size: 1.05rem;
+            font-size: 0.92rem;
             color: var(--text-secondary);
-            font-weight: 400;
-            margin-bottom: 28px;
-            line-height: 1.5;
+            margin-top: 14px;
+            line-height: 1.65;
+            max-width: 86%;
         }
         .slide-title .meta {
             display: flex;
-            gap: 14px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
             flex-wrap: wrap;
+            gap: 6px 20px;
+            margin-top: 24px;
+            padding-top: 10px;
+            border-top: 1px solid var(--rule);
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
         }
-        .slide-title .meta span {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background: var(--tag-bg);
-            padding: 4px 14px;
-            border-radius: 20px;
-            color: var(--tag-text);
-            font-size: 0.76rem;
-            font-weight: 500;
+        .cover-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 0;
         }
+
+        /* ---------- 内容页 ---------- */
         .slide-content h2 {
-            font-size: 1.55rem;
+            font-size: 2.06rem;
             font-weight: 700;
             color: var(--text-heading);
-            margin-bottom: 8px;
+            line-height: 1.2;
+            letter-spacing: -0.012em;
+            margin-top: 17px;
         }
-        .slide-content .section-label {
-            display: inline-block;
-            font-size: 0.7rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--accent);
-            font-weight: 600;
-            margin-bottom: 6px;
-            background: var(--tag-bg);
-            padding: 3px 12px;
-            border-radius: 12px;
+        .slide-content h2.big {
+            font-size: 2.75rem;
         }
-        .slide-content p {
-            font-size: 0.9rem;
-            line-height: 1.65;
-            color: var(--text-secondary);
-            margin-bottom: 10px;
-            max-width: 96%;
-        }
-        .slide-content .desc {
-            font-size: 0.86rem;
-            color: var(--text-secondary);
-            margin-bottom: 14px;
+        .dek {
+            margin-top: 8px;
+            font-size: 0.75rem;
             line-height: 1.6;
+            color: var(--text-secondary);
+            max-width: 92%;
         }
-        .stats-grid {
+        .body {
+            flex: 1;
+            min-height: 0;
+            margin-top: 14px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin: 16px 0 14px;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+        .body > .code-block { flex: 1; min-height: 0; }
+
+        /* ---------- 数值 ---------- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            border-top: 1.5px solid var(--text-heading);
+            border-bottom: 1px solid var(--rule);
         }
         .stat-card {
-            background: #faf9f6;
-            border: 1px solid #e3ded5;
-            border-radius: 6px;
-            padding: 14px 18px;
-            flex: 1 1 120px;
-            text-align: center;
-            min-width: 90px;
+            padding: 14px 16px 12px;
+            border-left: 1px solid var(--rule);
+        }
+        .stat-card:first-child {
+            border-left: 0;
+            padding-left: 0;
         }
         .stat-number {
             font-size: 1.8rem;
             font-weight: 700;
-            color: var(--accent);
-            line-height: 1.2;
+            color: var(--text-heading);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
         }
-        .stat-number.blue { color: #2c6280; }
-        .stat-number.green { color: #3c7a4a; }
-        .stat-number.amber { color: #c4a040; }
-        .stat-number.red { color: #c0392b; }
+        .stat-number.blue { color: var(--accent); }
+        .stat-number.green { color: var(--success); }
+        .stat-number.amber { color: var(--warn); }
+        .stat-number.red { color: var(--danger); }
         .stat-label {
-            font-size: 0.68rem;
+            font-family: var(--font-mono);
+            font-size: 0.56rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.08em;
             color: var(--text-muted);
             margin-top: 4px;
         }
         .stat-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px 24px;
-            margin: 8px 0 12px;
-        }
-        .stat-row .item {
-            font-size: 0.86rem;
+            gap: 4px 22px;
+            font-size: 0.7rem;
             color: var(--text-secondary);
         }
-        .stat-row .item strong {
-            color: var(--text-heading);
-            font-weight: 600;
-        }
-        .bar-chart {
-            margin: 12px 0 10px;
-        }
+        .stat-row strong { color: var(--text-heading); font-weight: 600; }
+
+        /* ---------- 条形图 ---------- */
         .bar-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 6px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: end;
+            gap: 3px 10px;
+            margin-bottom: 8px;
         }
         .bar-label {
-            width: 120px;
-            flex-shrink: 0;
-            font-size: 0.8rem;
-            font-weight: 500;
+            grid-column: 1;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
             color: var(--text-secondary);
-            text-align: right;
+            text-align: left;
         }
         .bar-track {
-            flex: 1;
-            height: 20px;
-            background: #eeebe5;
-            border-radius: 4px;
+            grid-column: 1 / -1;
+            height: 14px;
+            background: #eceae4;
             overflow: hidden;
-            min-width: 60px;
         }
         .bar-fill {
             height: 100%;
-            border-radius: 4px;
             width: 0%;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             padding-right: 6px;
-            font-size: 0.68rem;
+            font-family: var(--font-mono);
+            font-size: 0.54rem;
             font-weight: 600;
             color: #fff;
             white-space: nowrap;
+            font-variant-numeric: tabular-nums;
             transition: width 0.5s ease;
         }
-        .bar-fill.classic { background: #c0392b; }
-        .bar-fill.branchless { background: #d4a843; }
-        .bar-fill.branchless2 { background: #4a8fa8; }
-        .bar-fill.branchless3 { background: #3c7a4a; }
-        .bar-fill.ipc { background: #7a6a9c; }
+        .bar-fill.classic { background: var(--ink); }
+        .bar-fill.branchless { background: var(--accent); }
+        .bar-fill.branchless2 { background: #5b7a8c; }
+        .bar-fill.branchless3 { background: var(--success); }
+        .bar-fill.ipc { background: var(--warn); }
         .bar-value {
-            font-size: 0.78rem;
-            font-weight: 500;
+            grid-column: 2;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
             color: var(--text-secondary);
-            min-width: 50px;
             text-align: right;
+            font-variant-numeric: tabular-nums;
         }
-        .version-table-wrap {
-            overflow-x: auto;
-            margin: 12px 0 8px;
-        }
+
+        /* ---------- 数据表格 ---------- */
         .version-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8rem;
-            min-width: 500px;
+            font-size: 0.7rem;
         }
         .version-table th {
-            background: var(--code-bg);
             color: var(--text-heading);
             font-weight: 600;
-            padding: 8px 10px;
+            padding: 8px 8px;
             text-align: left;
-            border-bottom: 2px solid var(--divider);
-            font-size: 0.7rem;
+            border-bottom: 1.5px solid var(--text-heading);
+            font-family: var(--font-mono);
+            font-size: 0.56rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.06em;
         }
         .version-table td {
-            padding: 7px 10px;
-            border-bottom: 1px solid #eeebe5;
+            padding: 8px;
+            border-bottom: 1px solid var(--rule);
             color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
         }
         .version-table .best-row td {
-            background: #f4f8f4;
+            background: #f4f2ec;
             font-weight: 600;
             color: var(--text-primary);
         }
-        .version-table .best-row td:first-child {
-            border-left: 3px solid #3c7a4a;
-        }
+        .version-table .best-row td:first-child { color: var(--accent); }
+
+        /* ---------- 标签 ---------- */
         .tag {
             display: inline-block;
-            font-size: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 0.54rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
             background: var(--tag-bg);
-            padding: 1px 8px;
-            border-radius: 10px;
+            padding: 1px 6px;
             color: var(--tag-text);
-            font-weight: 500;
-            letter-spacing: 0.03em;
+            font-weight: 600;
         }
-        .tag.fast { background: #3c7a4a; color: #fff; }
-        .tag.slow { background: var(--accent); color: #fff; }
+        .tag.fast { background: transparent; box-shadow: inset 0 0 0 1px var(--success); color: var(--success); }
+        .tag.slow { background: transparent; box-shadow: inset 0 0 0 1px var(--danger); color: var(--danger); }
+
+        /* ---------- 高亮框 ---------- */
         .highlight-box {
-            background: #faf8f5;
-            border: 1px solid #e8e3da;
-            padding: 12px 16px;
-            margin: 10px 0;
-            font-size: 0.84rem;
+            background: #f7f6f2;
+            border-left: 2px solid var(--rule-strong);
+            padding: 8px 14px;
+            font-size: 0.76rem;
             color: var(--text-secondary);
             line-height: 1.6;
-            border-radius: 4px;
         }
         .highlight-box strong { color: var(--text-heading); }
-        .highlight-box.info { border-left: 3px solid #4a8fa8; background: #f7f9fa; }
-        .highlight-box.warn { border-left: 3px solid #d4a843; background: #fffdf7; }
-        .highlight-box.success { border-left: 3px solid #3c7a4a; background: #f7fbf7; }
-        .highlight-box.danger { border-left: 3px solid #c0392b; background: #fef9f8; }
+        .highlight-box.info { border-left-color: var(--info); background: #f4f7fa; }
+        .highlight-box.warn { border-left-color: var(--warn); background: #fbf8f1; }
+        .highlight-box.success { border-left-color: var(--success); background: #f3f8f4; }
+        .highlight-box.danger { border-left-color: var(--danger); background: #fbf5f4; }
+
+        /* ---------- 行列表 ---------- */
+        .rows {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 44px 1fr;
+            gap: 18px;
+            align-items: start;
+            padding: 11px 0;
+            border-top: 1px solid var(--rule);
+        }
+        .row:last-child { border-bottom: 1px solid var(--rule); }
+        .row .key {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            padding-top: 3px;
+        }
+        .row .nm {
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            line-height: 1.35;
+        }
+        .row .ds {
+            font-size: 0.74rem;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            margin-top: 3px;
+        }
+        .rows.tight .row { padding: 7px 0; }
+
+        /* ---------- 列举 ---------- */
         .cat-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px 20px;
-            margin: 10px 0 6px;
+            gap: 0 28px;
         }
         .cat-item {
             display: flex;
             align-items: baseline;
-            gap: 6px;
-            font-size: 0.8rem;
+            gap: 8px;
+            font-size: 0.84rem;
             color: var(--text-secondary);
             line-height: 1.5;
-            padding: 2px 0;
+            padding: 14px 0;
+            border-top: 1px solid var(--rule);
         }
         .cat-name {
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-heading);
             white-space: nowrap;
         }
@@ -339,191 +404,222 @@
             color: var(--text-muted);
             font-size: 0.76rem;
         }
+
+        /* ---------- 总结 ---------- */
         .summary-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px 22px;
-            margin: 14px 0 8px;
+            gap: 0 28px;
         }
         .summary-grid .item {
-            background: #faf8f5;
-            border: 1px solid #e3ded5;
-            border-radius: 4px;
-            padding: 12px 14px;
+            border-top: 1.5px solid var(--text-heading);
+            padding: 12px 0 10px;
         }
         .summary-grid .item h4 {
-            font-size: 0.88rem;
+            font-size: 0.84rem;
             font-weight: 700;
             color: var(--text-heading);
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .summary-grid .item ul {
-            margin: 4px 0 0;
             padding-left: 0;
             list-style: none;
         }
         .summary-grid .item ul li {
-            padding-left: 16px;
-            margin-bottom: 2px;
-            font-size: 0.78rem;
+            padding-left: 13px;
+            margin-bottom: 3px;
+            font-size: 0.74rem;
             color: var(--text-secondary);
+            line-height: 1.5;
             position: relative;
         }
         .summary-grid .item ul li::before {
-            content: '▸';
+            content: '·';
             position: absolute;
-            left: 0;
-            color: var(--accent-soft);
-            font-size: 0.55rem;
-            top: 0.15em;
+            left: 2px;
+            color: var(--accent);
+            font-weight: 700;
         }
-        .slide-number {
-            position: absolute;
-            bottom: 14px;
-            right: 24px;
-            font-size: 0.7rem;
+
+        /* ---------- 配图 ---------- */
+        .slide-image {
+            border: 1px solid var(--rule);
+            background: #f7f6f2;
+            display: flex;
+            justify-content: center;
+            min-height: 0;
+        }
+        .slide-image img {
+            max-width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            display: block;
+        }
+        .image-caption {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
             color: var(--text-muted);
-            font-weight: 500;
+            margin-bottom: 5px;
         }
+
+        /* ---------- 代码块 ---------- */
+        .code-block {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--code-border);
+            background: var(--code-bg);
+            overflow: hidden;
+            min-height: 0;
+        }
+        .code-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--code-border);
+            background: #f1efe9;
+        }
+        .code-dots {
+            display: inline-flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .code-dots i {
+            display: block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ded9d1;
+        }
+        .code-dots i:nth-child(1) { background: #e3a79f; }
+        .code-dots i:nth-child(2) { background: #ead3a0; }
+        .code-dots i:nth-child(3) { background: #aec9a7; }
+        .code-label {
+            font-family: var(--font-mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .code-block pre { flex: 1; margin: 0; overflow: hidden; }
+        .code-block pre code {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            line-height: 1.52;
+            color: var(--code-text);
+            padding: 8px 12px 9px;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            tab-size: 4;
+        }
+        .inline-code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: #f0eee8;
+            padding: 0 4px;
+            color: var(--accent-ink);
+        }
+
+        /* ---------- 行号 ---------- */
+        .hljs-ln-numbers {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            text-align: right;
+            color: #a9b0b6;
+            vertical-align: top;
+            padding-right: 10px !important;
+            padding-left: 0 !important;
+            font-size: 0.6rem;
+            min-width: 2.2em;
+            border-right: 1px solid var(--rule);
+        }
+        .hljs-ln-code { padding-left: 10px !important; }
+
+        /* ---------- 语法高亮（内置亮色 token） ---------- */
+        .hljs-comment, .hljs-quote { color: #98a0a6; font-style: italic; }
+        .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-name { color: #7b3fa0; }
+        .hljs-string, .hljs-attr, .hljs-template-tag, .hljs-regexp { color: #2f7a4f; }
+        .hljs-number, .hljs-symbol, .hljs-bullet, .hljs-attribute { color: #a65a18; }
+        .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--accent); }
+        .hljs-type, .hljs-class .hljs-title, .hljs-built_in { color: #1b6e6b; }
+        .hljs-variable, .hljs-template-variable, .hljs-params, .hljs-property { color: var(--code-text); }
+        .hljs-meta, .hljs-meta .hljs-keyword { color: #8a6d2f; }
+        .hljs-tag { color: #4e565e; }
+        .hljs-addition { background: #eaf4ec; color: var(--success); }
+        .hljs-deletion { background: #faebe9; color: var(--danger); }
+        .hljs-emphasis { font-style: italic; }
+        .hljs-strong { font-weight: 700; }
+
+        /* ---------- 导航 ---------- */
         .navigation-bar {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-top: 22px;
+            gap: 18px;
+            margin-top: 20px;
             width: 100%;
         }
         .nav-arrow {
-            width: 38px;
-            height: 38px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            background: var(--bg-slide);
-            border: 1px solid var(--divider);
+            background: transparent;
+            border: 1px solid var(--rule-strong);
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.72rem;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.04);
         }
         .nav-arrow:hover {
-            background: #fafaf7;
+            background: var(--bg-slide);
             color: var(--accent);
-            border-color: var(--accent-soft);
+            border-color: var(--accent);
         }
-        .nav-arrow:disabled { opacity: 0.3; pointer-events: none; }
-        .dot-indicators {
-            display: flex;
-            gap: 8px;
-        }
+        .nav-arrow:disabled { opacity: 0.28; pointer-events: none; }
+        .dot-indicators { display: flex; gap: 7px; }
         .dot {
-            width: 9px;
-            height: 9px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            background: #d4cfc7;
+            background: #c6c2b7;
             cursor: pointer;
             transition: all 0.25s;
             border: none;
         }
         .dot.active {
             background: var(--accent);
-            width: 26px;
-            border-radius: 12px;
-        }
-        .inline-code {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-            font-size: 0.82em;
-            background: #f3f1ec;
-            padding: 1px 6px;
+            width: 22px;
             border-radius: 3px;
-            color: #5c3d2e;
         }
-        .slide-image {
-            margin: 12px 0 6px;
-            border-radius: 4px;
-            box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-            display: flex;
-            justify-content: center;
-        }
-        .slide-image img {
-            max-width: 100%;
-            max-height: 360px;
-            object-fit: contain;
-            display: block;
-        }
-        .image-caption {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin: 4px 0 10px;
-            font-style: italic;
-        }
-        .slide-content pre {
-            margin: 8px 0 14px;
-            border-radius: 4px;
-            overflow-x: hidden;
-            font-size: 0.73rem;
-            border: 1px solid var(--code-border);
-            background: var(--code-bg);
-        }
-        .slide-content pre code {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-            font-size: 0.71rem;
-            color: var(--code-text);
-            line-height: 1.55;
-            padding: 10px 14px;
-            display: block;
-            white-space: pre-wrap;
-            overflow-wrap: break-word;
-        }
-        .code-label {
-            display: inline-block;
-            font-size: 0.63rem;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            font-weight: 600;
-            margin-bottom: 2px;
-            background: #f0ede8;
-            padding: 2px 10px;
-            border-radius: 8px;
-        }
-        /* highlight.js line numbers */
-        .hljs-ln-numbers {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            text-align: right;
-            color: var(--text-muted);
-            border-right: 1px solid var(--divider);
-            vertical-align: top;
-            padding-right: 10px !important;
-            padding-left: 10px !important;
-            font-size: 0.6rem;
-            min-width: 2em;
-        }
-        .hljs-ln-code {
-            padding-left: 14px !important;
-        }
+
         @media (max-width: 820px) {
-            .slide { padding: 28px 22px 24px; min-height: 400px; }
-            .slide-title h1 { font-size: 1.8rem; }
-            .slide-content h2 { font-size: 1.25rem; }
+            body { padding: 12px; }
+            .slide { padding: 24px 22px 20px; min-height: 460px; }
+            .slide-title h1 { font-size: 2rem; }
+            .slide-title .subtitle { font-size: 0.82rem; }
+            .slide-content h2 { font-size: 1.4rem; }
+            .slide-content h2.big { font-size: 1.7rem; }
+            .dek { font-size: 0.68rem; }
             .cat-grid { grid-template-columns: 1fr; }
-            .summary-grid { grid-template-columns: 1fr 1fr; }
-            .version-table { font-size: 0.7rem; min-width: 400px; }
-            .slide-image img { max-height: 260px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .slide-image img { max-height: 200px; }
+            .code-block pre code { font-size: 0.62rem; }
         }
         @media (max-width: 520px) {
             body { padding: 8px; }
-            .slide { padding: 16px 12px 18px; min-height: 320px; }
-            .slide-title h1 { font-size: 1.4rem; }
-            .slide-content h2 { font-size: 1.1rem; }
-            .bar-label { width: 60px; font-size: 0.65rem; text-align: left; }
-            .summary-grid { grid-template-columns: 1fr; }
-            .version-table { font-size: 0.6rem; min-width: 300px; }
-            .slide-image img { max-height: 220px; }
+            .slide { padding: 16px 12px 14px; min-height: 380px; }
+            .slide-title h1 { font-size: 1.5rem; }
+            .slide-content h2 { font-size: 1.15rem; }
+            .bar-label { width: 60px; font-size: 0.56rem; text-align: left; }
+            .slide-image img { max-height: 160px; }
+            .code-block pre code { font-size: 0.56rem; }
         }
     </style>
 </head>
@@ -532,42 +628,67 @@
 
         <!-- 幻灯片 0：标题页 -->
         <div class="slide slide-title active" data-index="0">
-            <div class="pretitle">Rust · GNSS · 航天动力学</div>
-            <h1>sidereon</h1>
-            <p class="subtitle">卫星传播、过境预测、精确定位与坐标转换——纯Rust引擎，一个crate搞定</p>
-            <div class="meta">
-                <span>🦀 Neil Berkman</span>
-                <span>📅 v0.35.0</span>
-                <span>🛰️ GNSS · 定位 · RTK</span>
-                <span>📐 SP3 · SPP · PPP</span>
+            <div class="top">
+                <span>Rust · GNSS · 航天动力学</span>
+                <span>sidereon · 2026</span>
+            </div>
+            <div class="rule"></div>
+            <div class="cover-body">
+                <h1>sidereon</h1>
+                <p class="subtitle">卫星传播、过境预测、精确定位与坐标转换，纯 Rust 引擎，一个 crate 覆盖全栈。</p>
+                <div class="meta">
+                    <span>Neil Berkman</span>
+                    <span>v0.35.0</span>
+                    <span>GNSS · 定位 · RTK</span>
+                    <span>SP3 · SPP · PPP</span>
+                </div>
+            </div>
+            <div class="foot">
+                <span>一个 <span class="inline-code">cargo add sidereon</span> 就能跑通从轨道到坐标的整条链。</span>
+                <span class="en">sidereon.dev</span>
             </div>
         </div>
 
         <!-- 幻灯片 1：简介 -->
         <div class="slide slide-content" data-index="1">
-            <span class="section-label">📖 简介</span>
-            <h2>🛰️ 纯Rust的GNSS与航天动力学引擎</h2>
-            <p class="desc">sidereon 可传播卫星轨道、预测过境、求解精确位置（SPP/RTK/PPP），并在坐标框架与时间尺度之间转换——对标领域权威（Vallado、Skyfield、IGS、IERS）。</p>
-            <div class="cat-grid">
-                <div class="cat-item"><span class="cat-name">🦀 纯Rust</span><span class="cat-desc">#![forbid(unsafe_code)]，安全至上</span></div>
-                <div class="cat-item"><span class="cat-name">⚡ 高性能</span><span class="cat-desc">原生速度，无FFI开销</span></div>
-                <div class="cat-item"><span class="cat-name">📦 单crate</span><span class="cat-desc">cargo add sidereon 即获全栈</span></div>
-                <div class="cat-item"><span class="cat-name">✅ 严格验证</span><span class="cat-desc">对标Vallado、Skyfield、IGS</span></div>
+            <div class="top">
+                <span><span class="sec">01</span> · 简介</span>
+                <span>sidereon · GNSS</span>
             </div>
-            <div class="highlight-box info">
-                <strong>🔍 设计理念：</strong>底层 sidereon-core 提供完整引擎，表面层 sidereon 提供薄而符合人体工学的API——丰富的结果结构体和统一的 <span class="inline-code">Error</span> 枚举。
+            <div class="rule"></div>
+            <h2>纯 Rust 的 GNSS 与航天动力学引擎</h2>
+            <p class="dek">传播卫星轨道、预测过境、求解精确位置（SPP/RTK/PPP），并在坐标框架与时间尺度之间转换。</p>
+            <div class="body">
+                <div class="rows">
+                    <div class="row"><div class="key">M1</div><div><div class="nm">轨道传播</div><div class="ds">SGP4/TLE 与数值传播，覆盖过境预测、地面轨迹、大气阻力与再入预测。</div></div></div>
+                    <div class="row"><div class="key">M2</div><div><div class="nm">定位解算</div><div class="ds">SPP、RTK（浮点/固定）、PPP（浮点/固定），共用一套输入模型与结果结构体。</div></div></div>
+                    <div class="row"><div class="key">M3</div><div><div class="nm">坐标与时间</div><div class="ds">TEME↔GCRS↔ITRS、大地↔ECEF，UTC/TT/TDB/UT1 之间无损转换。</div></div></div>
+                    <div class="row"><div class="key">M4</div><div><div class="nm">数据与修正</div><div class="ds">SP3、RINEX、CRINEX、ANTEX、Bias-SINEX，以及 SBAS 与 RTCM SSR 修正。</div></div></div>
+                    <div class="row"><div class="key">M5</div><div><div class="nm">严格验证</div><div class="ds">SGP4 位精确对标 Vallado，框架对标 Skyfield 与 IERS，定位对标 IGS 产品。</div></div></div>
+                </div>
+            </div>
+            <div class="foot">
+                <span>引擎能力与 API 人体工学分开，表面层保持精简。</span>
+                <span class="en">core / facade</span>
             </div>
         </div>
 
         <!-- 幻灯片 2：快速入门 -->
         <div class="slide slide-content" data-index="2">
-            <span class="section-label">🚀 快速入门</span>
-            <h2>📡 ISS过境预测</h2>
-            <p class="desc">无需数据文件，无需配置：给一个TLE和地面站，即可预测卫星何时出现在地平线以上。</p>
-            <span class="code-label">安装</span>
-            <pre><code class="language-bash">cargo add sidereon</code></pre>
-            <span class="code-label">Rust · 核心代码</span>
-            <pre><code class="language-rust">use sidereon::passes::{find_passes_for_satellite, GroundStation, PassFinderOptions, UtcInstant};
+            <div class="top">
+                <span><span class="sec">02</span> · 快速入门</span>
+                <span>sidereon · passes</span>
+            </div>
+            <div class="rule"></div>
+            <h2>ISS 过境预测</h2>
+            <p class="dek">无需数据文件，无需配置：给一个 TLE 和地面站，即可预测卫星何时出现在地平线以上。</p>
+            <div class="body">
+                <div class="code-block">
+                    <div class="code-head">
+                        <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                        <span class="code-label">Rust · 核心代码</span>
+                    </div>
+                    <pre><code class="language-rust">use sidereon::passes::{find_passes_for_satellite, GroundStation, PassFinderOptions};
 use sidereon::sgp4::Satellite;
 
 let iss = Satellite::from_tle(line1, line2).expect("valid TLE");
@@ -577,132 +698,144 @@ let station = GroundStation {
 let options = PassFinderOptions { elevation_mask_deg: 10.0, ..Default::default() };
 let passes = find_passes_for_satellite(&amp;iss, station, start, end, options)
     .expect("valid inputs");</code></pre>
+                </div>
+            </div>
+            <div class="foot">
+                <span>输入只有 TLE、地面站和时间窗，其余用默认配置。</span>
+                <span class="en">find_passes_for_satellite</span>
+            </div>
         </div>
 
         <!-- 幻灯片 3：过境预测结果 -->
         <div class="slide slide-content" data-index="3">
-            <span class="section-label">📊 预测结果</span>
-            <h2>🎯 ISS过境输出示例</h2>
-            <p class="desc">以伯克利地面站为例，24小时内仰角10°以上的过境。</p>
-            <span class="code-label">典型输出</span>
-            <pre><code class="language-text">08:30 UTC |  6.8 min | peak 88 deg
-15:01 UTC |  6.6 min | peak 56 deg
-16:39 UTC |  3.5 min | peak 14 deg</code></pre>
-            <div class="cat-grid">
-                <div class="cat-item"><span class="cat-name">📡 AOS</span><span class="cat-desc">捕获时刻（卫星升起）</span></div>
-                <div class="cat-item"><span class="cat-name">📡 LOS</span><span class="cat-desc">丢失时刻（卫星落下）</span></div>
-                <div class="cat-item"><span class="cat-name">🏔️ Culmination</span><span class="cat-desc">最高点时刻</span></div>
-                <div class="cat-item"><span class="cat-name">📐 Peak Elevation</span><span class="cat-desc">峰值仰角</span></div>
+            <div class="top">
+                <span><span class="sec">03</span> · 预测结果</span>
+                <span>sidereon · passes</span>
             </div>
-            <div class="highlight-box info">
-                <strong>🔗 同模块更多功能：</strong>look_angle（方位角/仰角/距离）、ground_track、propagate_teme_arc（原始状态向量）。
+            <div class="rule"></div>
+            <h2>ISS 过境输出示例</h2>
+            <p class="dek">以伯克利地面站为例，24 小时内仰角 10° 以上的过境。</p>
+            <div class="body">
+                <div style="display:grid;grid-template-columns:52% 1fr;gap:22px;align-items:stretch;">
+                    <div class="code-block">
+                        <div class="code-head">
+                            <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                            <span class="code-label">Text · 典型输出</span>
+                        </div>
+                        <pre><code class="language-text">06:12 UTC |  4.1 min | peak 22 deg
+08:30 UTC |  6.8 min | peak 88 deg
+15:01 UTC |  6.6 min | peak 56 deg
+16:39 UTC |  3.5 min | peak 14 deg
+18:22 UTC |  5.2 min | peak 41 deg
+20:05 UTC |  2.9 min | peak 11 deg</code></pre>
+                    </div>
+                    <div class="cat-grid" style="grid-template-columns:1fr;">
+                        <div class="cat-item"><span class="cat-name">AOS</span><span class="cat-desc">捕获时刻（卫星升起）</span></div>
+                        <div class="cat-item"><span class="cat-name">LOS</span><span class="cat-desc">丢失时刻（卫星落下）</span></div>
+                        <div class="cat-item"><span class="cat-name">Culmination</span><span class="cat-desc">最高点时刻</span></div>
+                        <div class="cat-item"><span class="cat-name">Peak Elevation</span><span class="cat-desc">峰值仰角</span></div>
+                        <div class="cat-item"><span class="cat-name">Duration</span><span class="cat-desc">可见时长（分钟）</span></div>
+                    </div>
+                </div>
+                <div class="highlight-box info">
+                    <strong>同模块更多功能：</strong>look_angle（方位角/仰角/距离）、ground_track、propagate_teme_arc（原始状态向量）。
+                </div>
+            </div>
+            <div class="foot">
+                <span>三次过境的仰角差异，决定了地面站能不能收到信号。</span>
+                <span class="en">passes / geometry</span>
             </div>
         </div>
 
         <!-- 幻灯片 4：精确定位 -->
         <div class="slide slide-content" data-index="4">
-            <span class="section-label">📍 精确定位</span>
-            <h2>⚡ SPP / RTK / PPP 定位解算</h2>
-            <p class="desc">输入伪距观测值和SP3精密星历，即可获得最小二乘定位解。</p>
-            <span class="code-label">Rust · SPP定位</span>
-            <pre><code class="language-rust">use sidereon::positioning::{Corrections, Observation, SolveInputs, SolvePolicy};
+            <div class="top">
+                <span><span class="sec">04</span> · 精确定位</span>
+                <span>sidereon · positioning</span>
+            </div>
+            <div class="rule"></div>
+            <h2>SPP / RTK / PPP 定位解算</h2>
+            <p class="dek">输入伪距观测值和 SP3 精密星历，即可获得最小二乘定位解。</p>
+            <div class="body">
+                <div class="code-block">
+                    <div class="code-head">
+                        <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                        <span class="code-label">Rust · SPP 定位</span>
+                    </div>
+                    <pre><code class="language-rust">use sidereon::positioning::{Corrections, Observation, SolveInputs};
 use sidereon::{load_sp3, solve_spp, GnssSatelliteId, GnssSystem};
 
 let sp3 = load_sp3(&amp;std::fs::read("igs_product.sp3")?)?;
 let inputs = SolveInputs {
-    observations: vec![
-        Observation { satellite_id: GnssSatelliteId::new(GnssSystem::Gps, 1)?,
-                      pseudorange_m: 21_000_123.4 },
-        // ...more satellites
-    ],
+    observations: vec![Observation {
+        satellite_id: GnssSatelliteId::new(GnssSystem::Gps, 1)?,
+        pseudorange_m: 21_000_123.4,
+    }],
     corrections: Corrections::IONO_TROPO,
     ..spp_inputs
 };
 let fix = solve_spp(&amp;sp3, &amp;inputs, /* with_geodetic */ true, policy)?;</code></pre>
-            <div class="highlight-box success">
-                <strong>✅ 统一模式：</strong>RTK（浮点/固定）、PPP（浮点/固定）遵循相同模式——类型化配置输入，结果结构体含ECEF/大地坐标、残差、DOP和状态。批量解算 <span class="inline-code">solve_spp_batch</span> 可跨rayon线程池并行，与串行路径位精确一致。
+                </div>
+                <div class="highlight-box success">
+                    <strong>统一模式：</strong>RTK（浮点/固定）、PPP（浮点/固定）遵循相同模式，类型化配置输入，结果结构体含 ECEF/大地坐标、残差、DOP 和状态。批量解算 <span class="inline-code">solve_spp_batch</span> 可跨 rayon 线程池并行。
+                </div>
+            </div>
+            <div class="foot">
+                <span>换的是配置与策略，不换调用形状。</span>
+                <span class="en">spp / rtk / ppp</span>
             </div>
         </div>
 
         <!-- 幻灯片 5：功能全景 -->
         <div class="slide slide-content" data-index="5">
-            <span class="section-label">🧩 功能全景</span>
-            <h2>📦 功能清单 · 上</h2>
-            <div class="cat-grid">
-                <div class="cat-item"><span class="cat-name">🛰️ 轨道传播</span><span class="cat-desc">SGP4/TLE、数值传播、大气阻力与再入预测、过境与地面轨迹</span></div>
-                <div class="cat-item"><span class="cat-name">🌐 坐标与时间</span><span class="cat-desc">TEME↔GCRS↔ITRS、大地↔ECEF、UTC/TT/TDB/UT1、EGM96/2008</span></div>
-                <div class="cat-item"><span class="cat-name">🌙 天体与历书</span><span class="cat-desc">日月行星视位置、升降时刻、月相日月食、JPL SPK内核</span></div>
-                <div class="cat-item"><span class="cat-name">🔭 观测几何</span><span class="cat-desc">角距与位置角、相位角、视星等、晨昏线</span></div>
-                <div class="cat-item"><span class="cat-name">📡 定位解算</span><span class="cat-desc">SPP、RTK(浮点/固定)、PPP(浮点/固定)、DOP、速度、故障检测</span></div>
-                <div class="cat-item"><span class="cat-name">🧭 GNSS/INS融合</span><span class="cat-desc">松/紧耦合、RTS平滑、中断速度匹配、非完整约束</span></div>
+            <div class="top">
+                <span><span class="sec">05</span> · 功能全景</span>
+                <span>sidereon · modules</span>
+            </div>
+            <div class="rule"></div>
+            <h2>一个 crate 覆盖的六块能力</h2>
+            <p class="dek">从轨道传播到射频分析，模块边界按物理对象划分，不按算法划分。</p>
+            <div class="body">
+                <div class="rows tight">
+                    <div class="row"><div class="key">01</div><div><div class="nm">轨道传播</div><div class="ds">SGP4/TLE、数值传播、再入预测、过境与地面轨迹。</div></div></div>
+                    <div class="row"><div class="key">02</div><div><div class="nm">坐标与时间</div><div class="ds">TEME↔GCRS↔ITRS、大地↔ECEF、UTC/TT/TDB/UT1、EGM96/2008。</div></div></div>
+                    <div class="row"><div class="key">03</div><div><div class="nm">天体与历书</div><div class="ds">日月行星视位置、升降时刻、月相日月食、JPL SPK 内核。</div></div></div>
+                    <div class="row"><div class="key">04</div><div><div class="nm">观测几何</div><div class="ds">角距与位置角、相位角、视星等、晨昏线。</div></div></div>
+                    <div class="row"><div class="key">05</div><div><div class="nm">定位解算</div><div class="ds">SPP、RTK、PPP、DOP、速度、故障检测。</div></div></div>
+                    <div class="row"><div class="key">06</div><div><div class="nm">GNSS/INS 融合</div><div class="ds">松/紧耦合、RTS 平滑、中断速度匹配、非完整约束。</div></div></div>
+                </div>
+            </div>
+            <div class="foot">
+                <span>六块能力共用同一套时间与坐标框架。</span>
+                <span class="en">modules / astro</span>
             </div>
         </div>
 
-        <!-- 幻灯片 6：功能(续) -->
+        <!-- 幻灯片 6：总结 -->
         <div class="slide slide-content" data-index="6">
-            <span class="section-label">🧩 功能(续)</span>
-            <h2>📦 功能清单 · 下</h2>
-            <div class="cat-grid">
-                <div class="cat-item"><span class="cat-name">📊 GNSS数据</span><span class="cat-desc">SP3、RINEX(obs/nav/clock)、CRINEX编解码、ANTEX、Bias-SINEX</span></div>
-                <div class="cat-item"><span class="cat-name">🛡️ 修正服务</span><span class="cat-desc">SBAS、RTCM SSR、Galileo HAS轨道/钟差/偏差</span></div>
-                <div class="cat-item"><span class="cat-name">⚠️ 空间态势</span><span class="cat-desc">合接/TCA筛选、碰撞概率、CDM、C-W相对运动</span></div>
-                <div class="cat-item"><span class="cat-name">📻 射频分析</span><span class="cat-desc">链路预算(FSPL、EIRP、C/N₀、天线增益)</span></div>
+            <div class="top">
+                <span><span class="sec">06</span> · 总结</span>
+                <span>sidereon · takeaway</span>
             </div>
-            <div class="highlight-box info">
-                <strong>🔍 API分层：</strong>便捷函数（<span class="inline-code">load_sp3</span>、<span class="inline-code">solve_spp</span>、<span class="inline-code">passes</span>等）位于crate根；完整航天动力学树在 <span class="inline-code">sidereon::astro</span>；RTK/PPP底层细节通过 <span class="inline-code">sidereon::raw</span> 显式访问——人体工学表面保持精简。
+            <div class="rule"></div>
+            <h2>核心要点</h2>
+            <p class="dek">一个 crate，一套坐标与时间框架，五种语言同一份数值。</p>
+            <div class="body">
+                <div class="summary-grid">
+                    <div class="item"><h4>纯 Rust 引擎</h4><ul><li>#![forbid(unsafe_code)]</li><li>单 crate 重新导出全栈</li></ul></div>
+                    <div class="item"><h4>核心能力</h4><ul><li>SGP4 轨道传播与过境预测</li><li>SPP/RTK/PPP 精确定位</li></ul></div>
+                    <div class="item"><h4>多语言统一</h4><ul><li>Rust / Python / C / Elixir / WASM</li><li>同一引擎，相同数值</li></ul></div>
+                    <div class="item"><h4>严格验证</h4><ul><li>SGP4 位精确对标 Vallado</li><li>框架对标 Skyfield / IERS</li></ul></div>
+                    <div class="item"><h4>适用场景</h4><ul><li>地面站调度与过境预报</li><li>高精度定位与组合导航</li></ul></div>
+                    <div class="item"><h4>约束与边界</h4><ul><li>不做信号层仿真</li><li>不绑定特定接收机厂商</li></ul></div>
+                </div>
+                <div class="highlight-box success">
+                    <strong>核心价值：</strong>一个 <span class="inline-code">cargo add sidereon</span> 即可获得完整的 GNSS 与航天动力学工具链，从卫星传播到精确定位，纯 Rust 实现，严格验证。
+                </div>
             </div>
-        </div>
-
-        <!-- 幻灯片 7：多语言与验证 -->
-        <div class="slide slide-content" data-index="7">
-            <span class="section-label">🌍 多语言</span>
-            <h2>🔗 五种语言，同一引擎</h2>
-            <div class="cat-grid">
-                <div class="cat-item"><span class="cat-name">🦀 Rust</span><span class="cat-desc">原生实现</span></div>
-                <div class="cat-item"><span class="cat-name">🐍 Python</span><span class="cat-desc">一等接口</span></div>
-                <div class="cat-item"><span class="cat-name">⚙️ C</span><span class="cat-desc">一等接口</span></div>
-                <div class="cat-item"><span class="cat-name">💊 Elixir</span><span class="cat-desc">一等接口</span></div>
-                <div class="cat-item"><span class="cat-name">🌐 WebAssembly</span><span class="cat-desc">浏览器中运行</span></div>
-                <div class="cat-item"><span class="cat-name">🎯 统一数值</span><span class="cat-desc">所有语言输出完全一致</span></div>
-            </div>
-            <div class="highlight-box success">
-                <strong>✅ 验证方式：</strong>SGP4传播器与David Vallado参考实现<strong>位精确</strong>一致；坐标框架与时间对标Skyfield和IERS；定位栈对标IGS产品。在线演示与文档：<span class="inline-code">sidereon.dev</span>
-            </div>
-        </div>
-
-        <!-- 幻灯片 8：项目信息 -->
-        <div class="slide slide-content" data-index="8">
-            <span class="section-label">📋 项目信息</span>
-            <h2>📈 版本与统计</h2>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-number">1,920</div><div class="stat-label">总下载量</div></div>
-                <div class="stat-card"><div class="stat-number blue">41</div><div class="stat-label">发布版本</div></div>
-                <div class="stat-card"><div class="stat-number green">2.4K</div><div class="stat-label">SLoC</div></div>
-                <div class="stat-card"><div class="stat-number amber">45.6 KiB</div><div class="stat-label">包大小</div></div>
-            </div>
-            <div class="stat-row">
-                <div class="item"><strong>许可：</strong>MIT</div>
-                <div class="item"><strong>版本：</strong>v0.35.0</div>
-                <div class="item"><strong>Edition：</strong>2021</div>
-                <div class="item"><strong>分类：</strong>Science / Simulation</div>
-            </div>
-            <div class="highlight-box info">
-                <strong>📦 安装：</strong><span class="inline-code">cargo add sidereon</span> &nbsp;|&nbsp; 文档：<span class="inline-code">docs.rs/sidereon/0.35.0</span> &nbsp;|&nbsp; 仓库：<span class="inline-code">github.com/neilberkman/sidereon</span>
-            </div>
-        </div>
-
-        <!-- 幻灯片 9：总结 -->
-        <div class="slide slide-content" data-index="9">
-            <span class="section-label">📌 总结</span>
-            <h2>🎯 核心要点</h2>
-            <div class="summary-grid">
-                <div class="item"><h4>🦀 纯Rust引擎</h4><ul><li>#![forbid(unsafe_code)]</li><li>单crate重新导出全栈</li><li>薄人体工学API层</li></ul></div>
-                <div class="item"><h4>🛰️ 核心能力</h4><ul><li>SGP4轨道传播与过境预测</li><li>SPP/RTK/PPP精确定位</li><li>坐标框架与时间尺度转换</li></ul></div>
-                <div class="item"><h4>🌍 多语言统一</h4><ul><li>Rust/Python/C/Elixir/WASM</li><li>同一引擎，相同数值</li><li>在线演示：sidereon.dev</li></ul></div>
-                <div class="item"><h4>✅ 严格验证</h4><ul><li>SGP4位精确对标Vallado</li><li>框架对标Skyfield/IERS</li><li>定位对标IGS产品</li></ul></div>
-            </div>
-            <div class="highlight-box success">
-                <strong>📌 核心价值：</strong>一个 <span class="inline-code">cargo add sidereon</span> 即可获得完整的GNSS与航天动力学工具链——从卫星传播到精确定位，纯Rust实现，严格验证。
+            <div class="foot">
+                <span>把整条链路收进一个 crate，是这套 API 唯一的设计目标。</span>
+                <span class="en">takeaway</span>
             </div>
         </div>
 
@@ -736,7 +869,7 @@ let fix = solve_spp(&amp;sp3, &amp;inputs, /* with_geodetic */ true, policy)?;</
             function updateSlide(index) {
                 slides.forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
                 const cur = slides[index];
-                cur.style.display = cur.classList.contains('slide-title') ? 'flex' : 'block';
+                cur.style.display = 'flex';
                 cur.classList.add('active');
                 dots.forEach(d => d.classList.remove('active'));
                 dots[index].classList.add('active');
