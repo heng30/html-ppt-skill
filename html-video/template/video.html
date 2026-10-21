@@ -213,7 +213,7 @@ h2.t em{font-style:normal;color:var(--accent-ink)}
 #capband{position:absolute;left:0;right:0;bottom:0;height:178px;background:var(--paper);z-index:50}
 #cap-rule{position:absolute;left:var(--pad-x);right:var(--pad-x);top:0;height:1px;background:var(--rule-strong)}
 #cap-mark{display:none}
-#cap-line{position:absolute;left:0;right:0;top:40px;margin:0 auto;max-width:1440px;padding:0 60px;font-size:44px;font-weight:600;line-height:1.42;letter-spacing:.01em;color:var(--ink);text-align:center;opacity:0;white-space:pre-line}
+#cap-line{position:absolute;left:0;right:0;top:26px;margin:0 auto;max-width:1440px;padding:0 60px;font-size:50px;font-weight:600;line-height:1.42;letter-spacing:.01em;color:var(--ink);text-align:center;opacity:0;white-space:pre-line}
 #veil{position:absolute;inset:0;background:var(--paper);z-index:60;pointer-events:none;opacity:1}
 
 /* ---------- 预览控件 ---------- */
@@ -725,7 +725,7 @@ const SCENES = __SCENES__;
     return lines.filter((l) => l.trim() !== '');
   }
 
-  const CAP_MAX = 29;
+  const CAP_MAX = 26;
   const CAP_HOLD = 0.35;
 
   function cueAt(t) {
