@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920" />
+<title>字幕驱动视频模板</title>
+<style>
+@font-face{font-family:'VideoSans';src:url('__FONT_SANS__') format('truetype');font-weight:100 900;font-style:normal;font-display:block}
+:root{
+  --font-sans:'VideoSans','Source Han Sans SC','Noto Sans CJK SC','Noto Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  --font-serif:'Source Han Serif SC','Noto Serif CJK SC','Songti SC','SimSun',serif;
+  --font-mono:'Noto Sans Mono CJK SC','SF Mono','JetBrains Mono','Menlo','Consolas',monospace;
+  --paper:#eff1f0;
+  --paper-2:#e4e7e5;
+  --ink:#111413;
+  --text:#22272c;
+  --soft:#3c4441;
+  --muted:#6c7572;
+  --accent:#f74c00;
+  --accent-ink:#bf3600;
+  --rule:rgba(17,20,19,.14);
+  --rule-strong:rgba(17,20,19,.34);
+  --pad-x:168px;
+  --content-top:176px;
+  --content-bottom:844px;
+  --cap-top:902px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+.focusable{transition:none}
+.focusable.on b,.focusable.on .big{color:var(--accent-ink)}
+.cmp tr.focusable.on td{color:var(--ink)}
+.cmp tr.focusable.on td:last-child{color:var(--accent-ink)}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0f0e}
+body{font-family:var(--font-sans);color:var(--ink);-webkit-font-smoothing:antialiased;user-select:none}
+
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;background:var(--paper);overflow:hidden}
+
+/* ---------- 常驻结构：顶栏 / 左轨 / 底栏 / 字幕带 ---------- */
+#rail{position:absolute;left:78px;top:176px;width:2px;height:700px;background:var(--rule)}
+#rail-fill{position:absolute;left:0;top:0;width:2px;height:0;background:var(--accent)}
+#rail-dot{position:absolute;left:-4px;top:0;width:10px;height:10px;background:var(--accent)}
+#hud{position:absolute;left:var(--pad-x);right:var(--pad-x);top:64px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-mono);font-size:19px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+#hud-left{display:flex;gap:20px;align-items:baseline}
+#hud-left b{color:var(--accent-ink);font-weight:600;letter-spacing:.1em}
+#hud-count{color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.08em;white-space:nowrap}
+#hud-count i{font-style:normal;color:var(--muted)}
+#hud-line{position:absolute;left:var(--pad-x);right:var(--pad-x);top:114px;height:1px;background:var(--rule-strong)}
+
+
+/* ---------- 镜头容器 ---------- */
+#shots{position:absolute;inset:0}
+.shot{position:absolute;left:0;top:0;width:1920px;height:1080px;padding:var(--content-top) var(--pad-x) 236px;display:flex;flex-direction:column;will-change:opacity;backface-visibility:hidden}
+.sk{font-family:var(--font-mono);font-size:18px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:24px;flex:0 0 auto}
+.sk em{font-style:normal;color:var(--accent-ink)}
+h2.t{font-size:72px;font-weight:700;line-height:1.2;letter-spacing:-.015em;color:var(--ink);max-width:1580px;flex:0 0 auto}
+h2.t .ln{display:block;overflow:hidden;padding-bottom:.04em;margin-bottom:-.04em}
+h2.t .ln>span{display:block}
+h2.t em{font-style:normal;color:var(--accent-ink)}
+.lede{margin-top:22px;font-size:27px;line-height:1.68;color:var(--soft);max-width:1240px;flex:0 0 auto}
+.stage-body{margin-top:auto;margin-bottom:auto;flex:0 1 auto}
+
+/* ---------- 封面 ---------- */
+.cv{display:flex;flex-direction:column;height:100%;padding-bottom:0}
+.cv-top{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,.85fr);gap:90px;align-items:start}
+.cv-kicker{font-family:var(--font-mono);font-size:19px;letter-spacing:.24em;color:var(--accent-ink);text-transform:uppercase}
+.cv-title{margin-top:34px;font-size:112px;font-weight:700;line-height:1.08;letter-spacing:-.03em;color:var(--ink)}
+.cv-title .ln{display:block;overflow:hidden;padding-bottom:.06em;margin-bottom:-.06em}
+.cv-title .ln>span{display:block}
+.cv-sub{margin-top:30px;font-size:28px;line-height:1.62;color:var(--soft);max-width:880px}
+.cv-side{border-top:2px solid var(--ink);padding-top:22px}
+.cv-side h4{font-family:var(--font-mono);font-size:16px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;font-weight:400;margin-bottom:6px}
+.cv-side .ci{padding:19px 0 17px;border-bottom:1px solid var(--rule)}
+.cv-side .ci i{display:block;font-family:var(--font-mono);font-style:normal;font-size:15px;letter-spacing:.14em;color:var(--accent-ink);margin-bottom:7px}
+.cv-side .ci b{display:block;font-size:25px;line-height:1.4;font-weight:600;color:var(--ink)}
+.cv-meta{margin-top:auto;display:flex;gap:72px;border-top:1px solid var(--rule-strong);padding-top:18px;font-family:var(--font-mono);font-size:16px;letter-spacing:.1em;color:var(--muted)}
+.cv-meta b{display:block;margin-top:7px;font-family:var(--font-sans);font-size:21px;font-weight:600;letter-spacing:.01em;color:var(--ink)}
+
+/* ---------- statement 关键词 ---------- */
+.keys{margin-top:auto;margin-bottom:auto;display:grid;grid-auto-rows:1fr;align-items:center;min-height:300px;border-top:1px solid var(--rule-strong)}
+.keys.c1{grid-template-columns:1fr}
+.keys.c2{grid-template-columns:repeat(2,1fr)}
+.keys.c3{grid-template-columns:repeat(3,1fr)}
+.keys.c4{grid-template-columns:repeat(4,1fr)}
+.key{padding:26px 52px 4px 0;min-width:0}
+.key:last-child{padding-right:0}
+.key i{display:block;font-family:var(--font-mono);font-style:normal;font-size:16px;letter-spacing:.16em;color:var(--accent-ink);margin-bottom:14px}
+.key b{display:block;font-size:33px;font-weight:600;line-height:1.38;color:var(--ink);margin-bottom:10px}
+.key span{display:block;font-size:21px;line-height:1.66;color:var(--muted)}
+
+/* ---------- stats ---------- */
+.stats{display:grid;border-top:2px solid var(--ink);margin-top:auto;margin-bottom:auto;min-height:300px;align-items:center}
+.stats.c1{grid-template-columns:1fr}
+.stats.c2{grid-template-columns:repeat(2,1fr)}
+.stats.c3{grid-template-columns:repeat(3,1fr)}
+.stats.c4{grid-template-columns:repeat(4,1fr)}
+.stat{padding:28px 48px 0 0;min-width:0}
+.stat:last-child{padding-right:0}
+.stat b{display:block;font-size:112px;font-weight:700;line-height:1;letter-spacing:-.035em;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat b em{font-style:normal;color:var(--accent-ink)}
+.stat u{display:block;font-size:20px;line-height:1.5;color:var(--muted);text-decoration:none;margin-top:16px;max-width:420px}
+.stat .bar{height:9px;background:var(--paper-2);margin-top:18px;position:relative;overflow:hidden}
+.stat .bar i{position:absolute;left:0;top:0;height:9px;background:var(--accent);width:0}
+
+/* ---------- list ---------- */
+.rows{display:flex;flex-direction:column;justify-content:center;border-top:2px solid var(--ink);margin-top:auto;margin-bottom:auto;min-height:360px}
+.row{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:22px;padding:17px 0 16px;border-bottom:1px solid var(--rule);align-items:start}
+.row .k{font-family:var(--font-mono);font-size:16px;letter-spacing:.1em;color:var(--accent-ink);padding-top:6px}
+.row b{display:block;font-size:29px;font-weight:600;line-height:1.36;color:var(--ink)}
+.row p{font-size:19.5px;line-height:1.55;color:var(--muted);margin-top:4px;max-width:1220px}
+.row .tag{font-family:var(--font-mono);font-size:15px;letter-spacing:.1em;color:var(--accent-ink);white-space:nowrap;text-align:right}
+
+/* ---------- quote ---------- */
+.qt{margin-top:auto;margin-bottom:auto;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:80px;align-items:end}
+.qt .main{border-left:2px solid var(--ink);padding-left:52px}
+.qt .bar{width:58px;height:3px;background:var(--accent);margin-bottom:30px}
+.qt p{font-family:var(--font-serif);font-size:64px;font-weight:500;line-height:1.42;letter-spacing:-.01em;color:var(--ink);max-width:1320px}
+.qt cite{display:block;margin-top:32px;font-family:var(--font-mono);font-style:normal;font-size:17px;letter-spacing:.14em;color:var(--muted)}
+.qt .note{border-top:2px solid var(--ink);padding-top:16px}
+.qt .note b{display:block;font-size:20px;line-height:1.5;color:var(--ink);margin-bottom:10px}
+.qt .note p{font-family:var(--font-sans);font-size:18px;line-height:1.66;color:var(--muted)}
+.qt .note .img{margin-top:16px;border:1px solid var(--rule-strong);padding:8px;background:#fff}
+.qt .note .img img{display:block;width:100%;height:auto;clip-path:inset(0 0 100% 0)}
+
+/* ---------- split ---------- */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:76px;margin-top:auto;margin-bottom:auto;align-items:center;min-height:360px}
+.col{border-top:2px solid var(--ink);padding-top:20px;min-width:0}
+.col.alt{border-top-color:var(--accent)}
+.col h3{font-family:var(--font-mono);font-size:16px;letter-spacing:.16em;color:var(--accent-ink);font-weight:500;margin-bottom:12px;text-transform:uppercase}
+.col b.big{display:block;font-size:38px;line-height:1.34;font-weight:600;color:var(--ink);margin-bottom:16px}
+.col p{font-size:22px;line-height:1.72;color:var(--soft);margin-bottom:12px}
+.col ul{list-style:none}
+.col li{font-size:20px;line-height:1.62;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)}
+.col li:before{content:'';display:inline-block;width:6px;height:6px;background:var(--accent);margin-right:12px;vertical-align:2px}
+.col .tagline{margin-top:16px;font-family:var(--font-mono);font-size:16px;letter-spacing:.08em;color:var(--muted)}
+
+/* ---------- flow 流程 ---------- */
+.flow{display:flex;align-items:center;gap:0;margin-top:auto;position:relative;min-height:320px}
+.fnode{flex:1;min-width:0;border:1px solid var(--rule-strong);background:rgba(255,255,255,.42);padding:26px 20px 24px;position:relative}
+.fnode.hot{border-color:var(--accent);background:rgba(247,76,0,.055)}
+.fnode i{display:block;font-family:var(--font-mono);font-style:normal;font-size:14px;letter-spacing:.14em;color:var(--muted);margin-bottom:10px}
+.fnode b{display:block;font-size:24px;font-weight:600;line-height:1.35;color:var(--ink)}
+.fnode span{display:block;font-size:17px;line-height:1.5;color:var(--muted);margin-top:6px}
+.farrow{width:52px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px;flex:0 0 52px}
+.farrow svg{width:36px;height:12px;display:block}
+.flow-note{margin-top:54px;display:flex;justify-content:space-between;gap:40px;border-top:1px solid var(--rule);padding-top:14px;font-size:18px;color:var(--muted)}
+.flow-loop{position:absolute;right:0;bottom:-34px;font-family:var(--font-mono);font-size:15px;letter-spacing:.1em;color:var(--accent-ink)}
+
+/* ---------- pillars 三支柱 ---------- */
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:56px;margin-top:auto;margin-bottom:auto;min-height:340px;align-items:center}
+.pillar{border-top:2px solid var(--ink);padding-top:20px}
+.pillar .ph{font-family:var(--font-mono);font-size:15px;letter-spacing:.16em;color:var(--accent-ink);margin-bottom:10px;text-transform:uppercase}
+.pillar b{display:block;font-size:31px;line-height:1.35;font-weight:600;margin-bottom:12px}
+.pillar p{font-size:19px;line-height:1.62;color:var(--muted);min-height:86px}
+.pillar .track{height:11px;background:var(--paper-2);margin-top:10px;position:relative}
+.pillar .track i{position:absolute;left:0;top:0;height:11px;background:var(--ink);width:0}
+.pillar.hot .track i{background:var(--accent)}
+.pillar .pl{display:flex;justify-content:space-between;margin-top:12px;font-family:var(--font-mono);font-size:15px;letter-spacing:.06em;color:var(--muted)}
+.pillar .pl b{font-size:15px;font-weight:500;color:var(--ink);margin:0}
+
+/* ---------- steps 两步 ---------- */
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:auto;margin-bottom:auto;align-items:center;min-height:360px;border-top:2px solid var(--ink)}
+.step{padding:30px 64px 0 0;min-width:0}
+.step:last-child{padding-right:0;padding-left:64px}
+.step i{display:block;font-family:var(--font-mono);font-style:normal;font-size:15px;letter-spacing:.16em;color:var(--accent-ink);margin-bottom:14px}
+.step b{display:block;font-size:38px;line-height:1.36;font-weight:600;margin-bottom:14px}
+.step p{font-size:22px;line-height:1.7;color:var(--soft)}
+
+/* ---------- compare 对照表 ---------- */
+.cmp{width:100%;border-collapse:collapse;margin-top:auto;margin-bottom:auto}
+.cmp th{font-family:var(--font-mono);font-size:15px;letter-spacing:.14em;color:var(--muted);font-weight:400;text-align:left;padding:0 18px 12px 0;border-bottom:2px solid var(--ink);text-transform:uppercase}
+.cmp td{padding:20px 18px 20px 0;border-bottom:1px solid var(--rule);font-size:21px;line-height:1.5;color:var(--soft);vertical-align:top}
+.cmp td:first-child{font-family:var(--font-mono);font-size:18px;letter-spacing:.08em;color:var(--ink);width:210px}
+.cmp td:last-child{color:var(--accent-ink);text-align:right;padding-right:0;font-weight:600}
+
+/* ---------- bars 数量级 ---------- */
+.bars{display:flex;flex-direction:column;justify-content:center;gap:30px;margin-top:auto;margin-bottom:auto;min-height:340px}
+.barrow{display:grid;grid-template-columns:300px 1fr 190px;gap:26px;align-items:center}
+.barrow .lab b{display:block;font-size:23px;font-weight:600;color:var(--ink)}
+.barrow .lab span{display:block;font-family:var(--font-mono);font-size:14px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+.barrow .track{height:34px;background:var(--paper-2);position:relative;overflow:hidden}
+.barrow .track i{position:absolute;left:0;top:0;height:34px;width:0;background:var(--ink)}
+.barrow.hot .track i{background:var(--accent)}
+.barrow .val{font-family:var(--font-mono);font-size:16px;letter-spacing:.1em;color:var(--muted);text-align:right}
+
+/* ---------- image ---------- */
+.imgshot{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:80px;margin-top:56px;margin-bottom:auto;align-items:center}
+.imgshot .txt{border-top:2px solid var(--ink);padding-top:24px}
+.imgshot .txt b{display:block;font-size:34px;line-height:1.35;font-weight:600;margin-bottom:18px;max-width:760px}
+.imgshot .txt p{font-size:20px;line-height:1.7;color:var(--soft);max-width:720px}
+.imgshot .pic{position:relative;border:1px solid var(--rule-strong);background:#fff;padding:12px;box-shadow:0 18px 44px rgba(20,23,26,.10)}
+.imgshot .pic img{display:block;width:auto;max-width:100%;height:auto;max-height:340px;margin:0 auto;object-fit:contain;clip-path:inset(0 0 100% 0)}
+.imgshot .pic .cap{margin-top:10px;font-family:var(--font-mono);font-size:13px;letter-spacing:.08em;color:var(--muted);text-align:right}
+
+/* ---------- summary 两组 ---------- */
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:72px;margin-top:auto;margin-bottom:auto;min-height:360px;align-items:center}
+.sumcol{border-top:2px solid var(--ink);padding-top:18px}
+.sumcol.alt{border-top-color:var(--accent)}
+.sumcol h3{font-family:var(--font-mono);font-size:15px;letter-spacing:.16em;color:var(--accent-ink);font-weight:500;margin-bottom:6px;text-transform:uppercase}
+.sumcol .item{padding:12px 0 11px;border-bottom:1px solid var(--rule)}
+.sumcol .item b{display:block;font-size:23px;font-weight:600;color:var(--ink);line-height:1.4}
+.sumcol .item span{display:block;font-size:17px;line-height:1.55;color:var(--muted);margin-top:3px}
+
+/* ---------- 收尾 ---------- */
+.close{display:flex;flex-direction:column;height:100%}
+.close .big{margin-top:auto;margin-bottom:auto;font-size:82px;line-height:1.24;font-weight:700;letter-spacing:-.02em;max-width:1540px}
+.close .big em{font-style:normal;color:var(--accent-ink)}
+.close .big .ln{display:block;overflow:hidden;padding-bottom:.08em;margin-bottom:-.08em}
+.close .big .ln>span{display:block}
+.close .sub{margin-top:30px;font-family:var(--font-mono);font-size:18px;letter-spacing:.14em;color:var(--muted)}
+
+/* ---------- 字幕带（内嵌，默认开启） ---------- */
+#foot-right{position:absolute;right:var(--pad-x);bottom:196px;font-family:var(--font-mono);font-size:15px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;z-index:55}
+#capband{position:absolute;left:0;right:0;bottom:0;height:178px;background:var(--paper);z-index:50}
+#cap-rule{position:absolute;left:var(--pad-x);right:var(--pad-x);top:0;height:1px;background:var(--rule-strong)}
+#cap-mark{display:none}
+#cap-line{position:absolute;left:0;right:0;top:40px;margin:0 auto;max-width:1440px;padding:0 60px;font-size:44px;font-weight:600;line-height:1.42;letter-spacing:.01em;color:var(--ink);text-align:center;opacity:0;white-space:pre-line}
+#veil{position:absolute;inset:0;background:var(--paper);z-index:60;pointer-events:none;opacity:1}
+
+/* ---------- 预览控件 ---------- */
+#controls{position:fixed;left:0;right:0;bottom:0;height:58px;display:none;align-items:center;gap:16px;padding:0 20px;background:#141716;color:#d7dbd8;font-family:var(--font-mono);font-size:13px;z-index:200}
+body.preview #controls{display:flex}
+body.preview #stage{top:0}
+#controls button{background:#fdfdfb;color:#141716;border:0;padding:7px 15px;font-family:var(--font-mono);font-size:13px;font-weight:600;cursor:pointer}
+#controls input[type=range]{flex:1;accent-color:#f74c00}
+#controls .tc{font-variant-numeric:tabular-nums;min-width:150px;text-align:right}
+#controls .sc{min-width:150px;text-align:center;color:#f74c00}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="rail"><div id="rail-fill"></div><div id="rail-dot"></div></div>
+  <div id="hud">
+    <span id="hud-left"></span>
+    <span id="hud-count"></span>
+  </div>
+  <div id="hud-line"></div>
+  <div id="shots"></div>
+  <div id="foot-right"></div>
+  <div id="capband">
+    <div id="cap-rule"></div>
+    <div id="cap-mark"></div>
+    <div id="cap-line"></div>
+  </div>
+  <div id="veil"></div>
+</div>
+
+<div id="controls" class="no-record">
+  <button id="btn-play">▶ 播放</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.01" value="0" />
+  <span class="sc" id="ctrl-shot">—</span>
+  <span class="tc" id="ctrl-time">0.00 / 0.00s</span>
+</div>
+
+<!-- ============================================================
+     SRT：唯一时间源。cue 索引按 SRT 序号（1-based）。
+     ============================================================ -->
+<script type="text/plain" id="srt">__SRT__</script>
+
+<!-- ============================================================
+     META 与 SCENES 由 scripts/build-video.js 注入
+     ============================================================ -->
+<script>
+const META = __META__;
+const SCENES = __SCENES__;
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  const W = 1920, H = 1080;
+  const RECORDING = window.__recording === true;
+  const TAIL = (META && META.tail) || 0.4;
+
+  const $ = (s) => document.querySelector(s);
+  const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+  const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+  const easeOutExpo = (p) => (p >= 1 ? 1 : 1 - Math.pow(2, -9 * p));
+  const easeInOut = (p) => (p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  /* ========== 1 · SRT 解析（序号 1-based） ========== */
+  function toSec(s) {
+    const m = String(s).trim().match(/^(\d+):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+    if (!m) return null;
+    return +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000;
+  }
+
+  function parseSRT(text) {
+    const cues = [];
+    const blocks = String(text).replace(/\r\n/g, '\n').replace(/^\uFEFF/, '').split(/\n{2,}/);
+    for (const block of blocks) {
+      const lines = block.split('\n').filter((l) => l.trim() !== '');
+      if (!lines.length) continue;
+      const ti = lines.findIndex((l) => l.indexOf('-->') >= 0);
+      if (ti < 0) continue;
+      const parts = lines[ti].split('-->');
+      const start = toSec(parts[0]);
+      const end = toSec(parts[1]);
+      if (start == null || end == null) continue;
+      const body = lines.slice(ti + 1).join(' ').replace(/\s+/g, ' ').trim();
+      if (!body) continue;
+      const n = cues.length + 1;
+      cues.push({ n, i: n - 1, start, end, text: body });
+    }
+    return cues;
+  }
+
+  const CUES = parseSRT(document.getElementById('srt').textContent);
+  if (!CUES.length) throw new Error('SRT 没有解析出字幕');
+  const TOTAL = CUES[CUES.length - 1].end + TAIL;
+
+  // cue 序号（1-based）→ 绝对秒；也接受直接写秒数
+  const atOf = (ref, fallback) => {
+    if (ref == null) return fallback;
+    if (typeof ref === 'number' && ref <= CUES.length && Number.isInteger(ref)) {
+      const c = CUES[Math.max(0, Math.min(CUES.length - 1, ref - 1))];
+      return c ? c.start : fallback;
+    }
+    if (typeof ref === 'number') return ref;
+    return fallback;
+  };
+
+  /* ========== 2 · 镜头构建 ========== */
+  function autoGroups() {
+    const out = [];
+    let cur = [0];
+    for (let i = 1; i < CUES.length; i++) {
+      const gap = CUES[i].start - CUES[i - 1].end;
+      const span = CUES[i].end - CUES[cur[0]].start;
+      if (gap >= 1.2 || cur.length >= 2 || span >= 9) { out.push(cur); cur = [i]; }
+      else cur.push(i);
+    }
+    out.push(cur);
+    return out.map((g) => ({ cue: g[0] + 1, until: g[g.length - 1] + 1, auto: true }));
+  }
+
+  function buildScenes() {
+    const list = (Array.isArray(SCENES) && SCENES.length) ? SCENES.slice() : autoGroups();
+    list.sort((x, y) => (x.cue | 0) - (y.cue | 0));
+    return list.map((sc, idx) => {
+      const a = Math.max(1, Math.min(CUES.length, sc.cue | 0)) - 1;
+      const b = Math.max(a, Math.min(CUES.length, (sc.until == null ? sc.cue : sc.until) | 0) - 1);
+      return Object.assign({}, sc, {
+        c0: a, c1: b, idx,
+        start: CUES[a].start,
+        end: CUES[b].end,
+        secs: sc.secs || null,
+      });
+    });
+  }
+
+  const SC = buildScenes();
+
+  // 兜底镜头：未编排的字幕补成 statement，整片不留白
+  (function fillGaps() {
+    const covered = new Array(CUES.length).fill(false);
+    for (const s of SC) for (let i = s.c0; i <= s.c1; i++) covered[i] = true;
+    const extra = [];
+    for (let i = 0; i < CUES.length; i++) {
+      if (covered[i]) continue;
+      let j = i;
+      while (j + 1 < CUES.length && !covered[j + 1] && j - i < 1) j++;
+      extra.push({ cue: i + 1, until: j + 1, auto: true, c0: i, c1: j, start: CUES[i].start, end: CUES[j].end });
+      for (let k = i; k <= j; k++) covered[k] = true;
+      i = j;
+    }
+    SC.push(...extra);
+    SC.sort((a, b) => a.c0 - b.c0);
+    SC.forEach((s, i) => (s.idx = i));
+  })();
+
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const linesHTML = (title, cls) => {
+    const lines = Array.isArray(title) ? title : [title];
+    return lines.map((ln) => '<span class="ln"><span>' + ln + '</span></span>').join('');
+  };
+
+  function markLines(root, baseAt) {
+    root.querySelectorAll('h2.t .ln>span, .cv-title .ln>span, .close .big .ln>span').forEach((el, i) => {
+      el.dataset.at = String(baseAt + i * 0.14);
+      el.dataset.kind = 'line';
+    });
+  }
+
+  const shotsHost = document.getElementById('shots');
+
+  function autoContent(sc) {
+    const first = CUES[sc.c0];
+    return {
+      kicker: '第 ' + pad2(sc.idx + 1) + ' 镜',
+      title: first.text,
+      lede: sc.c0 < sc.c1 ? CUES[sc.c0 + 1].text : '',
+    };
+  }
+
+  function buildShot(sc) {
+    const auto = sc.auto ? autoContent(sc) : {};
+    const type = sc.type || 'statement';
+    const kicker = sc.kicker != null ? sc.kicker : auto.kicker;
+    const title = sc.title != null ? sc.title : auto.title;
+    const lede = sc.lede != null ? sc.lede : (sc.auto ? auto.lede : '');
+    const start = sc.start;
+    const sec = document.createElement('section');
+    sec.className = 'shot';
+    sec.dataset.index = String(sc.idx);
+    const A = (ref, fallback) => atOf(ref, fallback).toFixed(3);
+    let html = '';
+
+    if (type === 'cover') {
+      html = '<div class="cv"><div class="cv-top"><div>' +
+        '<div class="cv-kicker" data-at="' + A(sc.cue, start) + '">' + esc(kicker) + '</div>' +
+        '<h1 class="cv-title">' + linesHTML(title) + '</h1>' +
+        (sc.sub ? '<p class="cv-sub" data-at="' + (start + 0.55).toFixed(3) + '">' + esc(sc.sub) + '</p>' : '') +
+        '</div>' +
+        (sc.side ? '<div class="cv-side" data-at="' + A(sc.sideAt, start + 0.8) + '">' +
+          (sc.sideTitle ? '<h4>' + esc(sc.sideTitle) + '</h4>' : '') +
+          sc.side.map((it, i) => '<div class="ci" data-at="' + A(it.cue, start + 0.9 + i * 0.45) + '">' +
+            (it.i ? '<i>' + esc(it.i) + '</i>' : '') + '<b>' + esc(it.t) + '</b></div>').join('') +
+          '</div>' : '') +
+        '</div>' +
+        (sc.meta ? '<div class="cv-meta">' + sc.meta.map((m, i) =>
+          '<div data-at="' + (start + 1.15 + i * 0.12).toFixed(3) + '"><span>' + esc(m[0]) + '</span><b>' + esc(m[1]) + '</b></div>').join('') + '</div>' : '') +
+        '</div>';
+      sec.innerHTML = html;
+      markLines(sec, start - 0.8);
+      return sec;
+    }
+
+    if (type === 'closing') {
+      html = '<div class="close">' +
+        '<div class="big">' + linesHTML(title) + '</div>' +
+        (sc.sub ? '<div class="sub" data-at="' + A(sc.subAt, start + 1.2) + '">' + esc(sc.sub) + '</div>' : '') +
+        '</div>';
+      sec.innerHTML = html;
+      markLines(sec, start - 0.8);
+      return sec;
+    }
+
+    if (type !== 'quote') {
+      html += '<h2 class="t">' + linesHTML(title) + '</h2>';
+      if (lede) html += '<p class="lede" data-at="' + A(sc.ledeAt, start + 0.45) + '">' + esc(lede) + '</p>';
+    }
+
+    if (type === 'statement') {
+      const keys = sc.keys || [];
+      html += '<div class="keys c' + Math.min(4, keys.length) + '" data-at="' + (start + 0.06).toFixed(3) + '">' +
+        keys.map((it, i) => '<div class="key focusable" data-at="' + (start + 0.12 + i * 0.06).toFixed(3) + '" data-focus="' + A(it.cue, start) + '">' +
+          (it.i ? '<i>' + esc(it.i) + '</i>' : '') + '<b>' + esc(it.t) + '</b>' +
+          (it.d ? '<span>' + esc(it.d) + '</span>' : '') + '</div>').join('') +
+        '</div>';
+    }
+
+    if (type === 'stats') {
+      const stats = sc.stats || [];
+      html += '<div class="stats c' + Math.min(4, Math.max(1, stats.length)) + '" data-at="' + (start + 0.06).toFixed(3) + '">' +
+        stats.map((s, i) => {
+          const cueAt = A(s.cue, start + 0.6 + i * 0.5);
+          const early = (start + 0.1 + i * 0.06).toFixed(3);
+          const num = s.count != null
+            ? '<b data-count="' + s.count + '" data-count-suffix="' + esc(s.suffix || '') + '" data-count-at="' + cueAt + '" data-at="' + early + '">0' + esc(s.suffix || '') + '</b>'
+            : '<b data-at="' + early + '">' + s.n + '</b>';
+          return '<div class="stat focusable" data-at="' + early + '" data-focus="' + cueAt + '">' + num +
+            (s.u ? '<u>' + esc(s.u) + '</u>' : '') +
+            (s.bar != null ? '<div class="bar"><i data-bar="' + s.bar + '" data-bar-at="' + cueAt + '" data-at="' + early + '"></i></div>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    }
+
+    if (type === 'list') {
+      const rows = sc.rows || [];
+      html += '<div class="rows" data-at="' + (start + 0.06).toFixed(3) + '">' + rows.map((r, i) =>
+        '<div class="row focusable" data-at="' + (start + 0.12 + i * 0.06).toFixed(3) + '" data-focus="' + A(r.cue, start) + '">' +
+        '<span class="k">' + esc(r.k || '') + '</span><div>' +
+        '<b>' + esc(r.t) + '</b>' + (r.d ? '<p>' + esc(r.d) + '</p>' : '') + '</div>' +
+        (r.tag ? '<span class="tag">' + esc(r.tag) + '</span>' : '') +
+        '</div>').join('') + '</div>';
+    }
+
+    if (type === 'quote') {
+      const q = Array.isArray(sc.quote) ? sc.quote : [sc.quote || title];
+      html += '<div class="qt" data-at="' + (start + 0.06).toFixed(3) + '"><div class="main">' +
+        '<div class="bar" data-at="' + A(sc.cue, start) + '"></div>' +
+        q.map((line, i) => '<p data-at="' + A(sc.quoteAt != null ? (Array.isArray(sc.quoteAt) ? sc.quoteAt[i] : sc.quoteAt) : null, start + 0.32 + i * 0.34) + '">' + esc(line) + '</p>').join('') +
+        (sc.cite ? '<cite data-at="' + A(sc.citeAt, start + 0.7 + q.length * 0.34) + '">' + esc(sc.cite) + '</cite>' : '') +
+        '</div>' +
+        (sc.note ? '<div class="note" data-at="' + A(sc.noteAt, start + 1.0) + '"><b>' + esc(sc.note.t) + '</b>' +
+          (sc.note.p ? '<p>' + esc(sc.note.p) + '</p>' : '') +
+          (sc.note.img ? '<div class="img"><img src="' + esc(sc.note.img) + '" alt=""><div class="cap">' + esc(sc.note.cap || '') + '</div></div>' : '') +
+          '</div>' : '') +
+        '</div>';
+    }
+
+    if (type === 'split') {
+      const cols = sc.cols || [];
+      html += '<div class="split" data-at="' + (start + 0.06).toFixed(3) + '">' + cols.map((col, i) =>
+        '<div class="col focusable' + (col.alt ? ' alt' : '') + '" data-at="' + (start + 0.12 + i * 0.08).toFixed(3) + '" data-focus="' + A(col.cue, start) + '">' +
+        (col.h ? '<h3>' + esc(col.h) + '</h3>' : '') +
+        (col.big ? '<b class="big">' + esc(col.big) + '</b>' : '') +
+        (col.p || []).map((p) => '<p>' + esc(p) + '</p>').join('') +
+        (col.li ? '<ul>' + col.li.map((li) => '<li>' + esc(li) + '</li>').join('') + '</ul>' : '') +
+        (col.tag ? '<div class="tagline">' + esc(col.tag) + '</div>' : '') +
+        '</div>').join('') + '</div>';
+    }
+
+    if (type === 'flow') {
+      const nodes = sc.nodes || [];
+      html += '<div class="flow" data-at="' + (start + 0.06).toFixed(3) + '">' + nodes.map((n, i) =>
+        (i ? '<div class="farrow" data-at="' + (start + 0.1 + i * 0.05).toFixed(3) + '"><svg viewBox="0 0 36 12" fill="none"><path d="M0 6h31M25 1l6 5-6 5" stroke="currentColor" stroke-width="1.4"/></svg></div>' : '') +
+        '<div class="fnode focusable' + (n.hot ? ' hot' : '') + '" data-at="' + (start + 0.1 + i * 0.05).toFixed(3) + '" data-focus="' + A(n.cue, start) + '">' +
+        (n.i ? '<i>' + esc(n.i) + '</i>' : '') + '<b>' + esc(n.t) + '</b>' +
+        (n.d ? '<span>' + esc(n.d) + '</span>' : '') + '</div>').join('') +
+        (sc.loop ? '<div class="flow-loop">' + esc(sc.loop) + '</div>' : '') +
+        '</div>' +
+        (sc.note ? '<div class="flow-note" data-at="' + A(sc.noteAt, start + 1.4) + '"><span>' + esc(sc.note) + '</span>' +
+          (sc.noteR ? '<span>' + esc(sc.noteR) + '</span>' : '') + '</div>' : '');
+    }
+
+    if (type === 'pillars') {
+      const items = sc.pillars || [];
+      html += '<div class="pillars" data-at="' + (start + 0.06).toFixed(3) + '">' + items.map((p, i) =>
+        '<div class="pillar focusable' + (p.hot ? ' hot' : '') + '" data-at="' + (start + 0.12 + i * 0.06).toFixed(3) + '" data-focus="' + A(p.cue, start) + '">' +
+        '<div class="ph">' + esc(p.h || '') + '</div><b>' + esc(p.t) + '</b>' +
+        '<p>' + esc(p.d || '') + '</p>' +
+        '<div class="track"><i data-bar="' + (p.bar == null ? 50 : p.bar) + '" data-bar-at="' + A(p.cue, start) + '" data-at="' + (start + 0.12 + i * 0.06).toFixed(3) + '"></i></div>' +
+        '<div class="pl"><span>' + esc(p.l || '') + '</span><b>' + esc(p.r || '') + '</b></div>' +
+        '</div>').join('') + '</div>';
+    }
+
+    if (type === 'steps') {
+      const items = sc.steps || [];
+      html += '<div class="steps" data-at="' + (start + 0.06).toFixed(3) + '">' + items.map((s, i) =>
+        '<div class="step focusable" data-at="' + (start + 0.12 + i * 0.08).toFixed(3) + '" data-focus="' + A(s.cue, start) + '">' +
+        (s.i ? '<i>' + esc(s.i) + '</i>' : '') + '<b>' + esc(s.t) + '</b>' +
+        (s.d ? '<p>' + esc(s.d) + '</p>' : '') + '</div>').join('') + '</div>';
+    }
+
+    if (type === 'compare') {
+      const cols = sc.cols || ['', '', ''];
+      const rows = sc.rows || [];
+      html += '<table class="cmp" data-at="' + (start + 0.06).toFixed(3) + '"><thead><tr>' + cols.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' +
+        rows.map((r, i) => '<tr class="focusable" data-at="' + (start + 0.12 + i * 0.06).toFixed(3) + '" data-focus="' + A(r.cue, start) + '">' +
+          r.cells.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table>';
+    }
+
+    if (type === 'bars') {
+      html += '<div class="bars" data-at="' + (start + 0.06).toFixed(3) + '">' + (sc.bars || []).map((b, i) =>
+        '<div class="barrow focusable' + (b.hot ? ' hot' : '') + '" data-at="' + (start + 0.12 + i * 0.08).toFixed(3) + '" data-focus="' + A(b.cue, start) + '">' +
+        '<div class="lab"><b>' + esc(b.t) + '</b><span>' + esc(b.s || '') + '</span></div>' +
+        '<div class="track"><i data-bar="' + b.bar + '" data-bar-at="' + A(b.cue, start) + '" data-at="' + (start + 0.12 + i * 0.08).toFixed(3) + '"></i></div>' +
+        '<div class="val">' + esc(b.v || '') + '</div></div>').join('') + '</div>';
+    }
+
+    if (type === 'image') {
+      html += '<div class="imgshot" data-at="' + (start + 0.06).toFixed(3) + '"><div class="txt" data-at="' + A(sc.bodyAt, start + 0.5) + '">' +
+        (sc.big ? '<b>' + esc(sc.big) + '</b>' : '') +
+        (sc.p ? '<p>' + esc(sc.p) + '</p>' : '') + '</div>' +
+        '<div class="pic" data-at="' + A(sc.imgAt, start + 0.8) + '"><img src="' + esc(sc.img) + '" alt="">' +
+        (sc.cap ? '<div class="cap">' + esc(sc.cap) + '</div>' : '') + '</div></div>';
+    }
+
+    if (type === 'summary') {
+      html += '<div class="sum" data-at="' + (start + 0.06).toFixed(3) + '">' + (sc.groups || []).map((g, gi) =>
+        '<div class="sumcol' + (gi ? ' alt' : '') + '" data-at="' + A(g.cue, start + 0.6 + gi * 0.4) + '">' +
+        '<h3>' + esc(g.h) + '</h3>' +
+        (g.items || []).map((it) => '<div class="item focusable" data-at="' + (start + 0.12).toFixed(3) + '" data-focus="' + A(it.cue, start) + '"><b>' + esc(it.t) + '</b>' +
+          (it.d ? '<span>' + esc(it.d) + '</span>' : '') + '</div>').join('') +
+        '</div>').join('') + '</div>';
+    }
+
+    sec.innerHTML = html;
+    markLines(sec, start - 0.8);
+    return sec;
+  }
+
+  const nodes = SC.map((sc) => {
+    const el = buildShot(sc);
+    shotsHost.appendChild(el);
+    const reveals = Array.from(el.querySelectorAll('[data-at]')).map((n) => ({
+      el: n,
+      at: parseFloat(n.dataset.at),
+      kind: n.dataset.kind || 'block',
+    }));
+    const next = SC[sc.idx + 1];
+    return {
+      sc, el, reveals,
+      start: sc.start,
+      endEff: next ? Math.max(sc.end, next.start) : TOTAL,
+    };
+  });
+
+  const railFill = document.getElementById('rail-fill');
+  const railDot = document.getElementById('rail-dot');
+  const RAIL_H = 700;
+  const hudCount = document.getElementById('hud-count');
+  const hudLeft = document.getElementById('hud-left');
+  const footRight = document.getElementById('foot-right');
+  const capLine = document.getElementById('cap-line');
+  const capMark = document.getElementById('cap-mark');
+  const veil = document.getElementById('veil');
+
+  let curShot = -1;
+
+  function shotAt(t) {
+    let hit = 0;
+    for (let i = 0; i < nodes.length; i++) if (nodes[i].start <= t) hit = i;
+    return hit;
+  }
+
+  /* ========== 3 · 每帧渲染：只依赖 t ========== */
+  // 文字只做 opacity + clip-path，绝不做 transform，避免逐帧栅格化造成抖动。
+  function reveal(r, t) {
+    const dur = r.kind === 'line' ? 0.62 : 0.46;
+    const p = clamp01((t - r.at) / dur);
+    if (r.kind === 'line') {
+      const e = easeOutExpo(p);
+      r.el.style.clipPath = e >= 1 ? 'none' : 'inset(0 0 ' + ((1 - e) * 100).toFixed(2) + '% 0)';
+      r.el.style.opacity = p < 0.002 ? '0' : '1';
+      return;
+    }
+    const e = easeOut(p);
+    r.el.style.opacity = p <= 0 ? '0' : String(Math.min(1, p * 1.7).toFixed(3));
+    r.el.style.clipPath = e >= 1 ? 'none' : 'inset(0 0 ' + ((1 - e) * 13).toFixed(2) + '% 0)';
+  }
+
+  function animateCount(el, t, at) {
+    const target = parseFloat(el.dataset.count);
+    const suffix = el.dataset.countSuffix || '';
+    const p = clamp01((t - at) / 1.1);
+    if (p <= 0) { el.textContent = '0' + suffix; return; }
+    const v = Math.round(target * easeOut(p));
+    el.textContent = v.toLocaleString('en-US') + suffix;
+  }
+
+  function renderShots(t) {
+    for (const n of nodes) {
+      // 硬切：不在起镜前预显示，避免下一镜的横线/竖线提前露头
+      const vis = t >= n.start && (t < n.endEff || n === nodes[nodes.length - 1]) ? 1 : 0;
+      if (!vis) {
+        if (n.el.style.visibility !== 'hidden') n.el.style.visibility = 'hidden';
+        continue;
+      }
+      n.el.style.visibility = 'visible';
+      n.el.style.opacity = '1';
+
+      for (const r of n.reveals) {
+        reveal(r, t);
+        if (r.el.dataset.count != null) animateCount(r.el, t, parseFloat(r.el.dataset.countAt || r.at));
+        if (r.el.dataset.bar != null) {
+          const bp = easeInOut(clamp01((t - parseFloat(r.el.dataset.barAt || r.at)) / 0.9));
+          r.el.style.width = (bp * parseFloat(r.el.dataset.bar)).toFixed(2) + '%';
+        }
+      }
+
+      // 当前讲述对象：内容早已就位，用底色把注意力推到正在讲的那一条
+      const fEls = n.el.querySelectorAll('[data-focus]');
+      let active = null, best = -Infinity;
+      for (const el of fEls) {
+        const at = parseFloat(el.dataset.focus);
+        if (at <= t && at > best) { best = at; active = el; }
+      }
+      for (const el of fEls) el.classList.toggle('on', el === active);
+
+      const imgs = n.el.querySelectorAll('.pic img');
+      for (const img of imgs) {
+        const at = parseFloat(img.parentElement.dataset.at || '0');
+        const p = easeOut(clamp01((t - at) / 0.8));
+        img.style.clipPath = p >= 1 ? 'none' : 'inset(0 0 ' + ((1 - p) * 100).toFixed(2) + '% 0)';
+      }
+
+      if (n.el.querySelector('.cv-meta')) {
+        // 封面底栏固定
+      }
+    }
+  }
+
+  /* ---------- 字幕：按 SRT 绝对时间，内嵌显示 ---------- */
+  function visualLen(s) {
+    let n = 0;
+    for (const ch of s) n += /[a-zA-Z0-9 .,'":;\-]/.test(ch) ? 0.5 : 1;
+    return n;
+  }
+
+  function tokenize(text) {
+    const out = [];
+    let buf = '';
+    for (const ch of text) {
+      buf += ch;
+      if ('，。、；：！？,.;:!?'.indexOf(ch) >= 0) { out.push(buf); buf = ''; }
+    }
+    if (buf.trim()) out.push(buf);
+    const toks = [];
+    for (const s of out) {
+      for (const p of s.split(/(\s+)/)) {
+        if (!p) continue;
+        if (/^\s+$/.test(p)) {
+          if (toks.length && !/\s$/.test(toks[toks.length - 1])) toks[toks.length - 1] += ' ';
+        } else {
+          toks.push(p);
+        }
+      }
+    }
+    return toks;
+  }
+
+  function cjkSpace(text) {
+    return String(text)
+      .replace(/([\u4e00-\u9fff])([A-Za-z0-9])/g, '$1\u2009$2')
+      .replace(/([A-Za-z0-9])([\u4e00-\u9fff])/g, '$1\u2009$2');
+  }
+
+  function wrapCaption(text, maxLen) {
+    const toks = tokenize(text);
+    const lines = [];
+    let cur = '';
+    for (const tk of toks) {
+      if (cur && visualLen(cur) + visualLen(tk) > maxLen) { lines.push(cur); cur = tk; }
+      else cur += tk;
+    }
+    if (cur.trim()) lines.push(cur);
+    return lines.filter((l) => l.trim() !== '');
+  }
+
+  const CAP_MAX = 29;
+  const CAP_HOLD = 0.35;
+
+  function cueAt(t) {
+    if (t < CUES[0].start) return null;
+    let hit = -1;
+    for (let i = 0; i < CUES.length; i++) if (CUES[i].start <= t) hit = i;
+    if (hit < 0) return null;
+    const c = CUES[hit];
+    const next = CUES[hit + 1];
+    const hold = Math.min(c.end + CAP_HOLD, next ? next.start - 0.02 : c.end + CAP_HOLD);
+    if (t > hold) return null;
+    return c;
+  }
+
+  let capKey = '';
+
+  function renderCaption(t) {
+    const c = cueAt(t);
+    if (!c) {
+      if (capKey !== '') { capKey = ''; capLine.textContent = ''; capLine.style.opacity = '0'; capMark.style.opacity = '0'; }
+      return;
+    }
+    const lines = wrapCaption(cjkSpace(c.text), CAP_MAX);
+    if (!lines.length) return;
+    const totalLen = lines.reduce((s, l) => s + visualLen(l), 0);
+    const dur = Math.max(0.2, c.end - c.start);
+    let acc = c.start, idx = 0, lineStart = c.start;
+    for (let i = 0; i < lines.length; i++) {
+      const d = (visualLen(lines[i]) / totalLen) * dur;
+      if (t < acc + d || i === lines.length - 1) { idx = i; lineStart = acc; break; }
+      acc += d;
+    }
+    const shown = lines.slice(0, idx + 1).join('\n');
+    const key = c.n + '|' + idx;
+    if (key !== capKey) { capKey = key; capLine.textContent = shown; }
+    const p = clamp01((t - lineStart) / 0.14);
+    capLine.style.opacity = String((0.15 + 0.85 * easeOut(p)).toFixed(3));
+    capMark.style.opacity = '1';
+  }
+
+  function renderHUD(t) {
+    const p = clamp01(t / TOTAL);
+    railFill.style.height = (p * RAIL_H).toFixed(2) + 'px';
+    railDot.style.top = (p * RAIL_H).toFixed(2) + 'px';
+    const si = shotAt(t);
+    if (si !== curShot) {
+      curShot = si;
+      const sc = nodes[si].sc;
+      hudLeft.innerHTML = (sc.section ? '<b>' + esc(sc.section) + '</b>' : '') +
+        '<span>' + esc(sc.hud || sc.kicker || '') + '</span>';
+      hudCount.innerHTML = '<b>' + pad2(si + 1) + '</b><i> / ' + pad2(nodes.length) + '</i>';
+      footRight.textContent = sc.footRight || sc.kicker || '';
+    }
+  }
+
+  function render(t) {
+    const tt = Math.max(0, Math.min(TOTAL, t));
+    const fadeIn = clamp01(tt / 0.45);
+    const fadeOut = clamp01((TOTAL - tt) / 0.45);
+    veil.style.opacity = String((1 - Math.min(fadeIn, fadeOut)).toFixed(3));
+    renderShots(tt);
+    renderHUD(tt);
+    renderCaption(tt);
+    return tt;
+  }
+
+  /* ========== 4 · 双模式时钟 ========== */
+  window.__totalDuration = TOTAL;
+  window.__cues = CUES;
+  window.__shotCount = nodes.length;
+  window.__audio = (META && META.audio) || null;
+  window.__seek = function (t) { render(t); };
+  window.__ready = true;
+
+  if (RECORDING) { render(0); return; }
+
+  document.body.classList.add('preview');
+  const btn = document.getElementById('btn-play');
+  const scrub = document.getElementById('scrub');
+  const timeEl = document.getElementById('ctrl-time');
+  scrub.max = String(TOTAL);
+  let playing = false;
+  let t0 = 0, base = 0, raf = 0;
+
+  const urlT = parseFloat((location.search.match(/[?&]t=([\d.]+)/) || [])[1]);
+  if (!isNaN(urlT)) render(urlT);
+
+  function loop(now) {
+    if (!playing) return;
+    const t = base + (now - t0) / 1000;
+    if (t >= TOTAL) {
+      render(TOTAL); playing = false; btn.textContent = '▶ 重播';
+      scrub.value = String(TOTAL); return;
+    }
+    const tt = render(t);
+    scrub.value = String(tt);
+    timeEl.textContent = tt.toFixed(2) + ' / ' + TOTAL.toFixed(2) + 's';
+    raf = requestAnimationFrame(loop);
+  }
+
+  function toggle() {
+    if (playing) { playing = false; cancelAnimationFrame(raf); btn.textContent = '▶ 播放'; return; }
+    playing = true;
+    base = parseFloat(scrub.value) >= TOTAL - 0.02 ? 0 : parseFloat(scrub.value);
+    t0 = performance.now();
+    btn.textContent = '❚❚ 暂停';
+    raf = requestAnimationFrame(loop);
+  }
+
+  btn.addEventListener('click', toggle);
+  scrub.addEventListener('input', () => {
+    playing = false; cancelAnimationFrame(raf); btn.textContent = '▶ 播放';
+    const tt = render(parseFloat(scrub.value));
+    timeEl.textContent = tt.toFixed(2) + ' / ' + TOTAL.toFixed(2) + 's';
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    if (e.code === 'ArrowRight') { const tt = render(Math.min(TOTAL, parseFloat(scrub.value) + 1 / 25)); scrub.value = String(tt); }
+    if (e.code === 'ArrowLeft') { const tt = render(Math.max(0, parseFloat(scrub.value) - 1 / 25)); scrub.value = String(tt); }
+  });
+
+  render(0);
+  scrub.value = '0';
+  timeEl.textContent = '0.00 / ' + TOTAL.toFixed(2) + 's';
+})();
+</script>
+</body>
+</html>

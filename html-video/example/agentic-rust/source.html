@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+    <title>Agent 对 Rust 意味着什么 · Niko Matsakis</title>
+    <style>
+        :root {
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            --font-mono: 'Noto Sans Mono CJK SC', 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Menlo', 'Consolas', monospace;
+            --font-serif: 'Noto Serif CJK SC', 'Source Han Serif SC', serif;
+            --bg-page: #e4e7e5;
+            --bg-slide: #eff1f0;
+            --ink: #111413;
+            --text-primary: #22272c;
+            --text-secondary: #3c4441;
+            --text-muted: #6c7572;
+            --soft: #3c4441;
+            --signal: #f74c00;
+            --signal-text: #bf3600;
+            --rule: rgba(17, 20, 19, 0.14);
+            --rule-strong: rgba(17, 20, 19, 0.34);
+            --shadow: 0 1px 2px rgba(20, 23, 26, 0.05), 0 18px 44px rgba(20, 23, 26, 0.10);
+            --transition: 0.3s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-page);
+            color: var(--ink);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            user-select: none;
+        }
+        .presentation-container {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .slide {
+            display: none;
+            flex-direction: column;
+            background: var(--bg-slide);
+            box-shadow: var(--shadow);
+            padding: 35px 45px 29px;
+            min-height: 540px;
+            height: 540px;
+            width: 100%;
+            transition: opacity var(--transition), transform var(--transition);
+            animation: fadeSlide 0.4s ease-out;
+            opacity: 0;
+            transform: translateY(10px);
+            position: relative;
+            text-align: left;
+            overflow: hidden;
+        }
+        .slide.active { display: flex !important; opacity: 1; transform: translateY(0); }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 20px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .top .sec { color: var(--signal-text); }
+        .rule { height: 1px; background: var(--rule); margin-top: 8px; flex: 0 0 auto; }
+
+        .kicker { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.24em; color: var(--signal-text); }
+        h2 { font-size: 33px; font-weight: 700; letter-spacing: -0.012em; margin-top: 17px; line-height: 1.2; }
+        h2.big { font-size: 44px; }
+        .dek { margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--soft); max-width: 600px; }
+
+        .mono { font-family: var(--font-mono); }
+        .muted { color: var(--text-muted); }
+        .signal { color: var(--signal-text); }
+
+        .foot {
+            margin-top: auto;
+            border-top: 1px solid var(--rule);
+            padding-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 24px;
+            font-size: 10.5px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .foot .en { font-family: var(--font-mono); font-size: 8px; color: var(--text-muted); white-space: nowrap; }
+        .note { font-size: 9px; line-height: 1.62; color: var(--text-muted); }
+        .note b { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+
+        .navigation-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .nav-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid var(--rule-strong);
+            cursor: pointer;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .nav-arrow:hover { background: var(--bg-slide); color: var(--signal-text); border-color: var(--signal-text); }
+        .nav-arrow:disabled { opacity: 0.28; pointer-events: none; }
+        .dot-indicators { display: flex; gap: 7px; }
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #c6c2b7;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: none;
+        }
+        .nav-dot.active { background: var(--signal-text); width: 22px; border-radius: 3px; }
+
+        @media (max-width: 820px) {
+            body { padding: 12px; }
+            .slide { padding: 24px 22px 20px; min-height: 460px; height: auto; }
+            h2 { font-size: 22px; }
+            h2.big { font-size: 28px; }
+            .dek { font-size: 10px; }
+        }
+
+        /* ---------- 01 封面 ---------- */
+        #p01 .head { margin-top: 30px; display: grid; grid-template-columns: 1fr 290px; gap: 34px; }
+        #p01 h1 { font-size: 48px; font-weight: 700; line-height: 1.16; letter-spacing: -.01em; margin-top: 11px; }
+        #p01 h1 em { font-style: normal; color: var(--muted); font-weight: 500; }
+        #p01 .dek { width: 470px; margin-top: 16px; font-size: 14.5px; line-height: 1.65; }
+        #p01 .lede { border-top: 1px solid var(--ink); padding-top: 3px; margin-top: 4px; }
+        #p01 .lede div { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; line-height: 1.5; }
+        #p01 .lede .k { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); margin-bottom: 5px; }
+        #p01 .map { margin-top: auto; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--rule); padding-top: 12px; }
+        #p01 .map span.m { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; color: var(--text-muted); border: 1px solid var(--rule-strong); padding: 7px 10px; white-space: nowrap; }
+        #p01 .map span.m.on { color: var(--signal-text); border-color: var(--signal); }
+        #p01 .map span.a { font-size: 10px; color: var(--text-muted); }
+        #p01 .src { margin-top: 16px; display: flex; gap: 40px; align-items: flex-end; }
+        #p01 .src div { font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); }
+        #p01 .src b { display: block; font-family: var(--font-sans); font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--ink); margin-bottom: 4px; }
+
+        /* ---------- 02 开场 ---------- */
+        #p02 .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 20px; border-top: 2px solid var(--ink); }
+        #p02 .stat { padding: 10px 16px 8px 0; border-right: 1px solid var(--rule); }
+        #p02 .stat + .stat { padding-left: 16px; }
+        #p02 .stat:last-child { border-right: none; }
+        #p02 .v { font-family: var(--font-mono); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+        #p02 .stat .note { margin-top: 7px; }
+        #p02 .wrap { display: flex; gap: 30px; flex: 1; margin-top: 15px; }
+        #p02 .txt { width: 520px; font-size: 12px; line-height: 1.78; color: #2e3532; }
+        #p02 .txt p + p { margin-top: 8px; }
+        #p02 .txt .hl { border-left: 1px solid var(--signal); padding-left: 9px; color: var(--text-muted); }
+        #p02 .fig { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #p02 .fig .note { margin-bottom: 6px; align-self: stretch; }
+        #p02 .fig .box { border: 1px solid var(--rule); background: #fff; padding: 6px; display: inline-flex; justify-content: center; align-self: center; }
+        #p02 .fig img { display: block; max-width: 100%; max-height: 124px; object-fit: contain; }
+        #p02 .qs { margin-top: 15px; padding-bottom: 12px; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--rule); }
+        #p02 .qs div { padding: 8px 16px 0 0; font-size: 11.5px; line-height: 1.55; color: #2e3532; }
+        #p02 .qs div + div { padding-left: 16px; border-left: 1px solid var(--rule); }
+        #p02 .qs b { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); font-weight: 500; margin-bottom: 4px; }
+
+        /* ---------- 03 数据 ---------- */
+        #p03 .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 18px; border-top: 2px solid var(--ink); }
+        #p03 .stat { padding: 11px 16px 8px 0; border-right: 1px solid var(--rule); }
+        #p03 .stat + .stat { padding-left: 16px; }
+        #p03 .stat:last-child { border-right: none; }
+        #p03 .v { font-family: var(--font-mono); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+        #p03 .stat .note { margin-top: 6px; }
+        #p03 .fig .box { align-items: center; }
+        #p03 .wrap { display: grid; grid-template-columns: 1fr 240px; gap: 30px; flex: 1; margin-top: 12px; }
+        #p03 .row { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 9px 0; border-top: 1px solid var(--rule); }
+        #p03 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p03 .key { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--signal-text); padding-top: 2.5px; }
+        #p03 .nm { font-size: 14px; font-weight: 700; line-height: 1.3; }
+        #p03 .ds { font-size: 12px; line-height: 1.6; color: #2e3532; margin-top: 4px; }
+        #p03 .fig { display: flex; flex-direction: column; justify-content: center; }
+        #p03 .meme { border-top: 1px solid var(--ink); padding-top: 10px; }
+        #p03 .meme .en { font-family: var(--font-serif); font-size: 17px; line-height: 1.55; }
+        #p03 .meme .en i { font-style: italic; }
+        #p03 .meme .zh { font-size: 11.5px; line-height: 1.7; color: var(--text-secondary); margin-top: 9px; }
+        #p03 .meme .note { margin-top: 12px; border-top: 1px solid var(--rule); padding-top: 7px; }
+
+        /* ---------- 04 三根支柱 ---------- */
+        #p04 .track { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+        #p04 .st { border-top: 1px solid var(--ink); padding-top: 11px; }
+        #p04 .k { font-family: var(--font-mono); font-size: 8px; letter-spacing: .16em; color: var(--signal-text); }
+        #p04 .t { font-size: 19px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+        #p04 .d { font-size: 12px; line-height: 1.8; color: #2e3532; margin-top: 8px; min-height: 64px; }
+        #p04 .ex { font-family: var(--font-mono); font-size: 8px; letter-spacing: .06em; color: var(--text-muted); margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 6px; }
+        #p04 .bar { height: 6px; background: #d2d7d4; margin-top: 15px; position: relative; }
+        #p04 .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); display: block; }
+        #p04 .bar i.sig { background: var(--signal); }
+        #p04 .cnt { font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; color: var(--text-muted); margin-top: 6px; }
+        #p04 .pivot { margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 13px; display: flex; gap: 30px; align-items: flex-start; }
+        #p04 .pivot .lead { font-size: 12px; line-height: 1.75; color: #2e3532; width: 500px; }
+        #p04 .pivot .lead .hl { border-left: 1px solid var(--signal); padding-left: 9px; color: var(--text-muted); }
+        #p04 .pivot .q { flex: 1; font-family: var(--font-serif); font-size: 17px; line-height: 1.55; }
+        #p04 .take { margin-top: auto; margin-bottom: 14px; border-top: 1px solid var(--rule); padding-top: 10px; font-family: var(--font-serif); font-size: 16px; line-height: 1.5; }
+
+        /* ---------- 05 性能 ---------- */
+        #p05 .rows { margin-top: 16px; }
+        #p05 .row { display: grid; grid-template-columns: 48px 170px 1fr; gap: 16px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--rule); }
+        #p05 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p05 .key { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; color: var(--signal-text); }
+        #p05 .nm { font-size: 14.5px; font-weight: 700; }
+        #p05 .ds { font-size: 12px; line-height: 1.7; color: #2e3532; }
+        #p05 .ds .mono { font-size: 11px; color: var(--text-muted); }
+        #p05 .loop { display: flex; align-items: center; gap: 9px; margin-top: 14px; }
+        #p05 .chip { font-family: var(--font-mono); font-size: 9px; letter-spacing: .04em; border: 1px solid var(--rule-strong); padding: 7px 9px; white-space: nowrap; }
+        #p05 .chip.on { border-color: var(--signal); color: var(--signal-text); }
+        #p05 .arw { color: var(--text-muted); font-size: 10px; }
+        #p05 .loopnote { margin-top: 8px; display: flex; gap: 24px; align-items: baseline; }
+        #p05 .loopnote .note { flex: 1; }
+        #p05 .loopnote .big { font-family: var(--font-mono); font-size: 9px; letter-spacing: .14em; color: var(--ink); white-space: nowrap; }
+        #p05 .shift { margin-top: auto; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; border-top: 1px solid var(--rule); padding-top: 11px; }
+        #p05 .shift div { font-size: 11.5px; line-height: 1.65; color: #2e3532; }
+        #p05 .shift b { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); font-weight: 500; margin-bottom: 4px; }
+
+        /* ---------- 06 引语 ---------- */
+        #p06 { background: #FFFFFF; font-family: var(--font-serif); }
+        #p06 .top, #p06 .foot { font-family: var(--font-serif); letter-spacing: .3em; color: var(--text-muted); }
+        #p06 .top { font-size: 9.5px; }
+        #p06 .rule { background: var(--ink); }
+        #p06 .body { flex: 1; display: flex; align-items: center; gap: 39px; }
+        #p06 .bar { width: 1px; align-self: stretch; background: var(--ink); margin: 33px 0; }
+        #p06 .q { width: 640px; }
+        #p06 .q .cn { font-size: 31px; line-height: 1.55; letter-spacing: -.01em; }
+        #p06 .q .cn i { font-style: italic; }
+        #p06 .q .tr { margin-top: 24px; font-family: var(--font-sans); font-size: 13.5px; line-height: 1.85; color: #3a3833; width: 540px; }
+        #p06 .side { flex: 1; align-self: flex-end; padding-bottom: 32px; font-family: var(--font-sans); font-size: 9.5px; line-height: 1.8; color: var(--text-muted); }
+        #p06 .side b { display: block; color: var(--ink); font-weight: 700; font-size: 10px; margin-bottom: 4px; }
+        #p06 .foot { font-family: var(--font-sans); font-size: 9.5px; letter-spacing: 0; }
+
+        /* ---------- 07 测试 ---------- */
+        #p07 .wrap { display: grid; grid-template-columns: 1fr 250px; gap: 34px; flex: 1; margin-top: 18px; }
+        #p07 .rows { display: flex; flex-direction: column; justify-content: center; }
+        #p07 .row { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 12px 0; border-top: 1px solid var(--rule); }
+        #p07 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p07 .key { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--signal-text); padding-top: 3px; }
+        #p07 .nm { font-size: 14.5px; font-weight: 700; line-height: 1.3; }
+        #p07 .ds { font-size: 12px; line-height: 1.65; color: #2e3532; margin-top: 4px; }
+        #p07 .fig { display: flex; flex-direction: column; justify-content: center; }
+        #p07 .fig .note { margin-bottom: 6px; }
+        #p07 .fig .box { border: 1px solid var(--rule); background: #fff; padding: 6px; display: inline-flex; justify-content: center; align-self: center; }
+        #p07 .fig img { display: block; max-width: 100%; max-height: 205px; object-fit: contain; }
+
+        /* ---------- 08 类型系统 ---------- */
+        #p08 .lead { margin-top: 14px; border-left: 1px solid var(--signal); padding-left: 11px; font-size: 12px; line-height: 1.75; color: var(--text-muted); width: 720px; }
+        #p08 .rows { margin-top: 12px; }
+        #p08 .row { display: grid; grid-template-columns: 92px 1fr 250px; gap: 18px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--rule); }
+        #p08 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p08 .nm { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+        #p08 .ds { font-size: 12px; line-height: 1.6; color: #2e3532; }
+        #p08 .st { font-family: var(--font-mono); font-size: 8px; letter-spacing: .06em; color: var(--signal-text); text-align: right; }
+        #p08 .path { display: flex; gap: 26px; margin-top: 18px; align-items: flex-start; }
+        #p08 .step { flex: 1; border-top: 1px solid var(--ink); padding-top: 8px; font-size: 11.5px; line-height: 1.65; color: #2e3532; }
+        #p08 .step b { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+        #p08 .takeaway { margin-top: auto; margin-bottom: 6px; border-left: 1px solid var(--signal); padding-left: 11px; font-size: 11.5px; line-height: 1.7; color: var(--text-secondary); }
+
+        /* ---------- 09 证明 ---------- */
+        #p09 .rows { margin-top: 16px; }
+        #p09 .row { display: grid; grid-template-columns: 46px 180px 1fr; gap: 16px; align-items: baseline; padding: 16px 0; border-top: 1px solid var(--rule); }
+        #p09 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p09 .key { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; color: var(--signal-text); }
+        #p09 .nm { font-size: 14.5px; font-weight: 700; line-height: 1.35; }
+        #p09 .ds { font-size: 12px; line-height: 1.75; color: #2e3532; }
+        #p09 .ds .mono { font-size: 11px; color: var(--text-muted); }
+        #p09 .boundary { margin-top: 22px; display: flex; gap: 26px; align-items: baseline; border-left: 1px solid var(--signal); padding-left: 12px; }
+        #p09 .boundary .t { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); white-space: nowrap; }
+        #p09 .boundary .x { font-size: 12px; line-height: 1.7; color: #2e3532; }
+        #p09 .take { margin-top: auto; margin-bottom: 8px; border-top: 1px solid var(--rule); padding-top: 10px; font-family: var(--font-serif); font-size: 16px; line-height: 1.55; color: var(--ink); }
+
+        /* ---------- 10 分工 ---------- */
+        #p10 .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 18px; }
+        #p10 .col { border-top: 1px solid var(--ink); padding-top: 10px; display: flex; flex-direction: column; }
+        #p10 .col.sig { border-top-color: var(--signal); }
+        #p10 .lang { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .16em; color: var(--text-muted); }
+        #p10 .col.sig .lang { color: var(--signal-text); }
+        #p10 .ttl { font-size: 17px; font-weight: 700; margin-top: 7px; line-height: 1.35; }
+        #p10 .txt { font-size: 12px; line-height: 1.78; color: #2e3532; margin-top: 8px; }
+        #p10 .verdict { margin-top: 14px; border-left: 1px solid var(--rule-strong); padding-left: 9px; font-size: 11.5px; line-height: 1.65; color: var(--text-muted); }
+        #p10 .col.sig .verdict { border-left-color: var(--signal); color: var(--text-secondary); }
+        #p10 .tbl { margin-top: 20px; }
+        #p10 .tbl .th { display: grid; grid-template-columns: 80px 1fr 200px; gap: 16px; font-family: var(--font-mono); font-size: 8px; letter-spacing: .12em; color: var(--text-muted); border-bottom: 1px solid var(--rule-strong); padding-bottom: 6px; }
+        #p10 .tbl .tr { display: grid; grid-template-columns: 80px 1fr 200px; gap: 16px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 11.5px; color: #2e3532; }
+        #p10 .tbl .tr b { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; font-weight: 500; }
+        #p10 .tbl .tr .sig { color: var(--signal-text); }
+        #p10 .bottom { margin-top: auto; border-top: 1px solid var(--rule); padding-top: 11px; font-size: 12px; line-height: 1.7; color: #2e3532; }
+        #p10 .bottom b { font-weight: 700; color: var(--ink); }
+
+        /* ---------- 11 加倍下注 ---------- */
+        #p11 .rows { margin-top: 18px; }
+        #p11 .row { display: grid; grid-template-columns: 52px 190px 1fr; gap: 16px; align-items: baseline; padding: 20px 0; border-top: 1px solid var(--rule); }
+        #p11 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p11 .key { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; color: var(--signal-text); }
+        #p11 .nm { font-size: 14.5px; font-weight: 700; line-height: 1.4; }
+        #p11 .ds { font-size: 12px; line-height: 1.78; color: #2e3532; }
+        #p11 .ds .mono { font-size: 11px; color: var(--text-muted); }
+        #p11 .tail { margin-top: 16px; display: flex; gap: 30px; align-items: baseline; }
+        #p11 .tail .tl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); white-space: nowrap; }
+        #p11 .tail .x { font-size: 12px; line-height: 1.7; color: #2e3532; }
+        #p11 .take { margin-top: auto; border-top: 1px solid var(--rule); padding-top: 10px; font-family: var(--font-serif); font-size: 16px; line-height: 1.5; }
+
+        /* ---------- 12 北极星 ---------- */
+        #p12 .rows { margin-top: 16px; }
+        #p12 .row { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 8px 0; border-top: 1px solid var(--rule); }
+        #p12 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p12 .key { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--signal-text); padding-top: 3px; }
+        #p12 .nm { font-size: 14px; font-weight: 700; }
+        #p12 .ds { font-size: 12px; line-height: 1.6; color: #2e3532; margin-top: 4px; }
+        #p12 .bars { margin-top: 22px; }
+        #p12 .bars .lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); margin-bottom: 9px; }
+        #p12 .bl { display: grid; grid-template-columns: 150px 1fr 110px; gap: 14px; align-items: center; padding: 6px 0; }
+        #p12 .bl .cap { font-size: 11.5px; color: #2e3532; }
+        #p12 .bl .track2 { height: 16px; background: #d2d7d4; }
+        #p12 .bl .fill { height: 16px; background: var(--ink); display: block; }
+        #p12 .bl .fill.sig { background: var(--signal); }
+        #p12 .bl .num { font-family: var(--font-mono); font-size: 8px; letter-spacing: .08em; color: var(--text-muted); text-align: right; }
+        #p12 .bars .note { margin-top: 9px; margin-bottom: 4px; }
+
+        /* ---------- 13 设计 ---------- */
+        #p13 .rows { margin-top: 18px; }
+        #p13 .row { display: grid; grid-template-columns: 52px 210px 1fr; gap: 16px; align-items: baseline; padding: 24px 0; border-top: 1px solid var(--rule); }
+        #p13 .row:last-child { border-bottom: 1px solid var(--rule); }
+        #p13 .key { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; color: var(--signal-text); }
+        #p13 .nm { font-size: 14.5px; font-weight: 700; line-height: 1.4; }
+        #p13 .ds { font-size: 12px; line-height: 1.78; color: #2e3532; }
+        #p13 .ds .mono { font-size: 11px; color: var(--text-muted); }
+        #p13 .bottom { margin-top: 20px; display: flex; gap: 30px; align-items: baseline; }
+        #p13 .bottom .bl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); white-space: nowrap; }
+        #p13 .bottom .x { font-size: 12px; line-height: 1.7; color: #2e3532; }
+        #p13 .bottom { margin-bottom: 4px; }
+
+        /* ---------- 14 结论 ---------- */
+        #p14 .grp { display: grid; grid-template-columns: 330px 1fr; gap: 34px; margin-top: 16px; flex: 1; }
+        #p14 .col { border-top: 2px solid var(--ink); padding-top: 9px; }
+        #p14 .h { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); }
+        #p14 .it { padding: 8px 0; border-bottom: 1px solid var(--rule); }
+        #p14 .it b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
+        #p14 .it span { display: block; font-size: 11.5px; line-height: 1.6; color: #2e3532; margin-top: 3px; }
+        #p14 .tail { margin-top: 16px; margin-bottom: 10px; display: flex; gap: 26px; align-items: baseline; }
+        #p14 .tail .tl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); white-space: nowrap; }
+        #p14 .tail .x { font-size: 11.5px; line-height: 1.65; color: #2e3532; }
+
+        /* ---------- 15 收尾 ---------- */
+        #p15 .quote { margin-top: 20px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 14px 0 16px; }
+        #p15 .quote p { font-family: var(--font-serif); font-size: 22px; line-height: 1.62; letter-spacing: -.005em; width: 760px; }
+        #p15 .quote .src { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--text-muted); margin-top: 9px; }
+        #p15 .flip { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 14px; }
+        #p15 .col { border-top: 1px solid var(--rule-strong); padding-top: 9px; }
+        #p15 .k { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--signal-text); }
+        #p15 .t { font-size: 14.5px; font-weight: 700; margin-top: 6px; line-height: 1.4; }
+        #p15 .d { font-size: 11.5px; line-height: 1.65; color: #2e3532; margin-top: 5px; }
+        #p15 .close { margin-top: 18px; display: flex; gap: 28px; align-items: baseline; }
+        #p15 .close .lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .14em; color: var(--ink); white-space: nowrap; }
+        #p15 .close .x { font-size: 11.5px; line-height: 1.68; color: #2e3532; }
+        #p15 .take { margin-top: auto; border-top: 1px solid var(--rule); padding-top: 8px; font-family: var(--font-serif); font-size: 16px; line-height: 1.5; }
+        #p15 .close { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <div class="presentation-container" id="presentation">
+
+        <div class="slide slide-title active" id="p01" data-index="0">
+            <div class="top">
+                <span>Niko Matsakis · Rust 语言团队</span>
+                <span>REBASE / SPLASH · 2026-10</span>
+            </div>
+            <div class="rule"></div>
+
+            <div class="head">
+                <div>
+                    <div class="kicker">语言设计 / AGENTIC DEV</div>
+                    <h1>Agent 对 Rust<br>意味着什么，<br><em>以及反向的作用</em></h1>
+                    <p class="dek">如果 Agent 开始大规模写代码，编程语言设计这件事还有没有价值？Niko 的问题意识很直接，答案也不是安慰话。</p>
+                </div>
+                <div class="lede">
+                    <div>
+                        <span class="k">结论一</span>
+                        人类在编程中依然有位置
+                    </div>
+                    <div>
+                        <span class="k">结论二</span>
+                        语言设计依然相关
+                    </div>
+                    <div>
+                        <span class="k">结论三</span>
+                        Rust 是极佳的适配者，只是还能更好
+                    </div>
+                </div>
+            </div>
+
+            <div class="map">
+                <span class="m">现状 · 数字与三根支柱</span><span class="a">→</span>
+                <span class="m">护栏 · 测试、类型、证明</span><span class="a">→</span>
+                <span class="m on">设计 · 真正的开放难题</span>
+            </div>
+
+            <div class="src">
+                <div><b>演讲</b>2026 年 10 月 · REBASE</div>
+                <div><b>文字版</b>会议演讲的配套文章</div>
+                <div><b>主题</b>Agentic 开发与语言设计</div>
+            </div>
+
+            <div class="foot">
+                <span>接下来顺着他的论证走：先看现状，再看护栏，最后看设计这个真正的开放难题。</span>
+                <span class="en">NIKO MATSAKIS</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p02" data-index="1">
+            <div class="top">
+                <span><span class="sec">01</span> · 开场 / Opening</span>
+                <span>Agentic Dev</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>五十年没变的动作，这几年突然翻面</h2>
+            <p class="dek">Niko 从五年级的第一台机器讲起，用来对照今天的不安。</p>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="v">5 MHz</div>
+                    <div class="note">x86 处理器</div>
+                </div>
+                <div class="stat">
+                    <div class="v">5 MB</div>
+                    <div class="note">硬盘容量</div>
+                </div>
+                <div class="stat">
+                    <div class="v">512 KB</div>
+                    <div class="note">内存</div>
+                </div>
+            </div>
+
+            <div class="wrap">
+                <div class="txt">
+                    <p>硬件天翻地覆，但几十年来「把代码敲进文件」这个动作惊人地没有变过，连编辑器都可能还是 <span class="mono">vi</span>。变化发生在最近几年，一切突然翻面。</p>
+                    <p>翻面不只带来赋能和兴奋，也有恐惧和迷失方向。他自嘲地说，这是「冷静地评估 LLM 对语言设计者的意义」。</p>
+                    <p class="hl">这里隐含的分工变化：人类的价值正从「写代码」迁移到「理解代码」。</p>
+                </div>
+                <div class="fig">
+                    <div class="note">抱着纸袋呼吸的自嘲图，配的就是这场冷静评估。</div>
+                    <div class="box"><img src="images/img-01.gif" alt="抱着纸袋呼吸的自嘲图" /></div>
+                </div>
+            </div>
+
+            <div class="qs">
+                <div><b>问题一</b>我的编程技能还有用吗</div>
+                <div><b>问题二</b>我那些语言设计的技能呢</div>
+                <div><b>问题三</b>如果 Agent 会写，语言设计还值钱吗</div>
+            </div>
+
+            <div class="foot">
+                <span>人类仍有位置，语言设计仍然相关，Rust 是个好选择。</span>
+                <span class="en">Opening / 5MHz</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p03" data-index="2">
+            <div class="top">
+                <span><span class="sec">02</span> · 数据 / Numbers</span>
+                <span>Rust 2026</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>Rust 的增长不是偶然，是 Agent 选了它</h2>
+            <p class="dek">David Tolnay 的观察里，最值得记的是增速；最能说明问题的是 Meta 的案例。</p>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="v">+1,200%</div>
+                    <div class="note">TypeScript 的年增长，领跑所有语言</div>
+                </div>
+                <div class="stat">
+                    <div class="v">第 2 名</div>
+                    <div class="note">Rust 的增速，紧随其后</div>
+                </div>
+                <div class="stat">
+                    <div class="v">2 倍</div>
+                    <div class="note">Meta 今年写的第一方 Rust，等于过去九年总和的两倍</div>
+                </div>
+            </div>
+
+            <div class="wrap">
+                <div>
+                    <div class="row">
+                        <div class="key">C1</div>
+                        <div>
+                            <div class="nm">尝试新语言的成本，几乎归零</div>
+                            <div class="ds">以前换语言要先学会它，现在 Agent 替你承担了学习曲线，试错变得很便宜。</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="key">C2</div>
+                        <div>
+                            <div class="nm">随便选都行的时候，大家选跑得快的</div>
+                            <div class="ds">语言偏好退场之后，性能成了最直接的比较维度，Rust 自然被推到前面。</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="key">C3</div>
+                        <div>
+                            <div class="nm">最根本的一点：Rust 本身契合 agentic 编码</div>
+                            <div class="ds">Niko 特意留了余地：Go 同样很适合 Agent，只是落在另一个甜点区，代价是数据竞争和隐蔽 bug 更容易溜过去。</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fig">
+                    <div class="meme">
+                        <div class="en">"I wrote this in Rust."<br><i>"Be honest."</i></div>
+                        <div class="zh">我用 Rust 写的。<br>诚实点，是 Agent 写的，谢谢。</div>
+                        <div class="note">原文在这里配了一张梗图，说的就是这种微妙处境：代码署你的名字，作者另有其人。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="foot">
+                <span>Agent 让语言选择的成本坍塌，Rust 正好接住了这波流量。</span>
+                <span class="en">David Tolnay / Meta</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p04" data-index="3">
+            <div class="top">
+                <span><span class="sec">03</span> · 三根支柱 / Pillars</span>
+                <span>Design · Build · Optimize</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>造软件拆成三件事，进度极不均衡</h2>
+            <p class="dek">要把 Agent 用于基础软件构建，Niko 认为应该拆成三根支柱。没有一件被真正解决。</p>
+
+            <div class="track">
+                <div class="st">
+                    <div class="k">DESIGN · 设计</div>
+                    <div class="t">想清楚，并且明确规格化</div>
+                    <div class="d">这段代码到底该做什么。当前最先进的做法，基本还停在「写 Markdown，然后指望 Agent 认真读」。</div>
+                    <div class="ex">现状：文档 + 提示词</div>
+                    <div class="bar"><i class="sig" style="width:18%;"></i></div>
+                    <div class="cnt">进展最慢</div>
+                </div>
+                <div class="st">
+                    <div class="k">BUILD · 构建</div>
+                    <div class="t">写出确实做了该做的事的代码</div>
+                    <div class="d">可靠性次之：类型系统已经提供了一部分现成的护栏，但护栏之外还有大片空白。</div>
+                    <div class="ex">现状：类型检查 + 测试</div>
+                    <div class="bar"><i style="width:46%;"></i></div>
+                    <div class="cnt">有现成护栏</div>
+                </div>
+                <div class="st">
+                    <div class="k">OPTIMIZE · 优化</div>
+                    <div class="t">把代码调到高效运行</div>
+                    <div class="d">进展最快，因为性能有明确的客观信号可用：跑一次 benchmark，好坏立刻分晓。</div>
+                    <div class="ex">现状：benchmark + profiler</div>
+                    <div class="bar"><i style="width:74%;"></i></div>
+                    <div class="cnt">信号最清楚</div>
+                </div>
+            </div>
+
+            <div class="pivot">
+                <div class="lead">
+                    这个进度差异决定了全文的重心。
+                    <div class="hl">为什么 Rust 在优化和可靠性上有优势，为什么设计才是真正难啃的骨头。</div>
+                </div>
+                <div class="q">「三件事里，只有一件能靠工具给答案。」</div>
+            </div>
+
+            <div class="take">三件事没有一件被真正解决，但只有优化手里握着一把客观的尺子。</div>
+
+            <div class="foot">
+                <span>优化跑得最快，设计几乎没动，后面两幕由此展开。</span>
+                <span class="en">Design / Build / Optimize</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p05" data-index="4">
+            <div class="top">
+                <span><span class="sec">04</span> · 性能 / Perf</span>
+                <span>Rust 2026</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>默认就快，还能一处处拧</h2>
+            <p class="dek">旋钮一直在，只是过去要多年经验才敢碰。Agent 改变了谁能碰它们。</p>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="key">P1</div>
+                    <div class="nm">默认性能就好</div>
+                    <div class="ds">惯用的写法通常也是最快的写法，不写优化也能拿到不错的代码，这是 Rust 性能哲学的第一句。</div>
+                </div>
+                <div class="row">
+                    <div class="key">P2</div>
+                    <div class="nm">旋钮全都留着</div>
+                    <div class="ds">栈还是堆、指针间接在哪、结构体布局怎么排、<span class="mono">async</span> 帧在哪装箱，极限情况还能写内联汇编。过去掌握这些近乎玄学。</div>
+                </div>
+                <div class="row">
+                    <div class="key">P3</div>
+                    <div class="nm">Agent 很会拧</div>
+                    <div class="ds">高性能密码学圈子过去靠人手工调汇编，现在把这份活交给 Agent；做网络服务的人用 <span class="mono">dial9</span> 这类 profiler，让 Agent 去诊断 long poll、阻塞这类 async 陷阱。</div>
+                </div>
+            </div>
+
+            <div class="loop">
+                <span class="chip">代码</span><span class="arw">→</span>
+                <span class="chip">benchmark</span><span class="arw">→</span>
+                <span class="chip">profile</span><span class="arw">→</span>
+                <span class="chip on">Agent 分析</span><span class="arw">→</span>
+                <span class="chip">提出 PR</span><span class="arw">→</span>
+                <span class="chip">代码变快</span><span class="arw">↺</span>
+            </div>
+            <div class="loopnote">
+                <div class="big">PROFILER + AGENT</div>
+                <div class="note">这条回路一旦转起来，性能会持续复利，而不是一次性的手工调优。</div>
+            </div>
+
+            <div class="shift">
+                <div><b>过去</b>旋钮属于少数人的经验，调优近乎玄学，只有多年积累的人敢碰。</div>
+                <div><b>现在</b>profiler 把经验变成可读的信号，Agent 负责一遍遍动手去调。</div>
+            </div>
+
+            <div class="foot">
+                <span>profiler 加 Agent，把性能优化变成一条会复利的回路。</span>
+                <span class="en">Dial9 / Benchmark Loop</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p06" data-index="5">
+            <div class="top">
+                <span>幕间 / Interlude</span>
+                <span>Quote</span>
+            </div>
+            <div class="rule"></div>
+
+            <div class="body">
+                <div class="bar"></div>
+                <div class="q">
+                    <p class="cn">Rust 是完美的 Agent 语言，<br>因为只要它能编译，<br><i>就约等于正确</i>。</p>
+                    <p class="tr">Greg Brockman 在 2026 年 1 月这么说。这个判断并非 Rust 独有，OCaml 和 Haskell 也共享同一种「编译即正确」的手感，而 Agent 恰好最能从这种手感中获益。</p>
+                </div>
+                <div class="side">
+                    <b>但这句话是个伏笔</b>
+                    能编译就正确只是一道强护栏，它不是正确性证明。下一部分会论证，为什么它既不够用，又不可替代。
+                </div>
+            </div>
+
+            <div class="foot">
+                <span>强护栏值得押注，但别把它当成证明。</span>
+                <span class="en">Greg Brockman · 2026-01</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p07" data-index="6">
+            <div class="top">
+                <span><span class="sec">05</span> · 测试 / Tests</span>
+                <span>Correctness</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>测试能显示缺陷存在，不能显示它不存在</h2>
+            <p class="dek">Dijkstra 1970 年的那句话，在 Agent 写代码之后更成立，差得不是一星半点。</p>
+
+            <div class="wrap">
+                <div class="rows">
+                    <div class="row">
+                        <div class="key">T1</div>
+                        <div>
+                            <div class="nm">头几个测试都挺好</div>
+                            <div class="ds">跑通、覆盖、看起来都符合预期，于是你开始信任这段代码。</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="key">T2</div>
+                        <div>
+                            <div class="nm">再写一个，就彻底发疯</div>
+                            <div class="ds">疯到你根本想象不出这个 bug 是怎么来的，复现路径看着毫无道理。</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="key">T3</div>
+                        <div>
+                            <div class="nm">挖下去才发现</div>
+                            <div class="ds">Agent 完全跑偏了你试图表达的逻辑。测试没写错，是你表达的东西根本没被实现。</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="key">T4</div>
+                        <div>
+                            <div class="nm">护栏从类型系统来</div>
+                            <div class="ds">尤其是 Rust 这种进阶类型系统：不止查字段名，还能给出资源安全保证，把一整类生命周期错误从可能变成不可能。</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fig">
+                    <div class="note">歪掉的蛋糕配一句 Nailed it，就是 Agent 展示成果的样子。</div>
+                    <div class="box"><img src="images/img-03.gif" alt="歪蛋糕配 Nailed it" /></div>
+                </div>
+            </div>
+
+            <div class="foot">
+                <span>测试写得再多，也证明不了缺陷不存在。</span>
+                <span class="en">Dijkstra · 1970</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p08" data-index="7">
+            <div class="top">
+                <span><span class="sec">06</span> · 类型 / Types</span>
+                <span>Proof Tools</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>类型系统能显示缺陷的不存在，但不能显示正确性的存在</h2>
+            <p class="dek">Niko 仿 Dijkstra 造了这个句子。它只是一组简单的规则，遵守它就避开某几类错误。</p>
+
+            <div class="lead">它只保证你没做错某些事，不保证你做对了事。想再进一步，就需要证明系统，去展示更丰富的性质确实成立。</div>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="nm">Verus</div>
+                    <div class="ds">借助借用检查器来简化 SMT 求解，让求解器少处理一大块约束。</div>
+                    <div class="st">借用检查 / SMT</div>
+                </div>
+                <div class="row">
+                    <div class="nm">Creusot</div>
+                    <div class="ds">走演绎验证的路线，把 Rust 代码生成成 Why3 目标。</div>
+                    <div class="st">演绎验证 / WHY3</div>
+                </div>
+                <div class="row">
+                    <div class="nm">Aeneas</div>
+                    <div class="ds">把 Rust 翻译进证明助手，在证明助手里完成剩下的推理。</div>
+                    <div class="st">翻译 / 证明助手</div>
+                </div>
+                <div class="row">
+                    <div class="nm">Kani</div>
+                    <div class="ds">用模型检查覆盖 panic 自由这类性质，不需要人手写证明脚本。</div>
+                    <div class="st">模型检查 / PANIC-FREE</div>
+                </div>
+            </div>
+
+            <div class="path">
+                <div class="step"><b>第一步 · 先证明代码 PANIC-FREE</b>消掉一大批 bug。虽然本质上还是「避免做错」的类型检查式性质，但门槛低、收益大。</div>
+                <div class="step"><b>第二步 · 再往上加断言</b>证明代码算出来的正是你想要的结果，这时候才真正触到「正确」。</div>
+            </div>
+
+            <div class="takeaway">这几条路径的共同点：先用便宜的类型检查白拿一批正确性，再把证明的力气花在真正要紧的性质上。</div>
+
+            <div class="foot">
+                <span>证明系统往前推一步，但只该用在真正重要的性质上。</span>
+                <span class="en">Verus / Creusot / Aeneas / Kani</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p09" data-index="8">
+            <div class="top">
+                <span><span class="sec">07</span> · 证明 / Proof</span>
+                <span>Unsafe &amp; Perf</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>部署证明，不只为了写对，也为了写快</h2>
+            <p class="dek">全篇最反直觉的论点：密码学算法有极清晰的数学定义，于是可以换一种方式指挥 Agent。</p>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="key">PR</div>
+                    <div class="nm">定理证明器接活</div>
+                    <div class="ds">对 Agent 说：随便你怎么写，只要能证明结果依然正确。<span class="mono">Lean</span>、<span class="mono">Rocq</span> 这类定理证明器能承担这份工作，《Why Lean is faster than Rust》把这个思路演示得很漂亮。</div>
+                </div>
+                <div class="row">
+                    <div class="key">UF</div>
+                    <div class="nm">最有价值的落点是 unsafe</div>
+                    <div class="ds">现在很多人不愿上 unsafe，哪怕它更快，因为一旦错了，代价完全不值得。这个保守态度是合理的，问题在于它挡住了整条优化路径。</div>
+                </div>
+                <div class="row">
+                    <div class="key">BD</div>
+                    <div class="nm">证明之后，才敢优化到底</div>
+                    <div class="ds">如果能证明这段 unsafe 代码不会触发未定义行为，就可以放心压榨性能，而不是靠祈祷和代码评审。</div>
+                </div>
+            </div>
+
+            <div class="boundary">
+                <div class="t">BOUNDARY / 一条不能松的边界</div>
+                <div class="x">安全 API 必须保护使用者，无论他怎么滥用。Rust 在这一点上态度明确，而 C++ 经常把未定义行为的责任推回给用户。</div>
+            </div>
+
+            <div class="take">证明在这里不是为了让人少写代码，而是让 Agent 敢往更危险、也更快的地方走。</div>
+
+            <div class="foot">
+                <span>能证明没有未定义行为，unsafe 才敢优化到底。</span>
+                <span class="en">Lean / Rocq / Unsafe</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p10" data-index="9">
+            <div class="top">
+                <span><span class="sec">08</span> · 分工 / Division</span>
+                <span>Types vs Proof</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>有了证明系统，为什么还要类型系统</h2>
+            <p class="dek">因为易用性。类型系统简单得多，所以流行得多，先把烦人的小 bug 排掉，才轮得到证明上场。</p>
+
+            <div class="cmp">
+                <div class="col">
+                    <div class="lang">JAVA · 不看更多代码就证明不了</div>
+                    <div class="ttl">给字段赋值，再断言相等</div>
+                    <div class="txt">在 Java 里写下这段逻辑，你无法证明断言成立，因为随时可能有别的线程在改 <span class="mono">this</span>。局部看起来没问题，全局却说不清。</div>
+                    <div class="verdict">想证明它，得先排除整个对象上所有并发的写入。</div>
+                </div>
+                <div class="col sig">
+                    <div class="lang">RUST · 断言必然成立</div>
+                    <div class="ttl">同样的逻辑，多一条保证</div>
+                    <div class="txt">在 Rust 里，只要 <span class="mono">Eq</span> 对 <span class="mono">Bar</span> 自反，这个断言必然成立。原因在于类型系统保证了 <span class="mono">&amp;mut self</span> 是一个唯一引用。</div>
+                    <div class="verdict">唯一性由借用检查器追踪，不需要证明器去猜。</div>
+                </div>
+            </div>
+
+            <div class="tbl">
+                <div class="th"><span>证明同一个断言</span><span>还需要什么条件</span><span>结论</span></div>
+                <div class="tr"><b>Java</b><span>没有别的线程同时在写 <span class="mono">this</span></span><span>看局部代码看不出来</span></div>
+                <div class="tr"><b>Rust</b><span>只要 <span class="mono">Eq</span> 对 <span class="mono">Bar</span> 自反</span><span class="sig">断言必然成立</span></div>
+            </div>
+
+            <div class="bottom"><b>这也正是 Verus 的工作方式。</b>信任借用检查器来追踪唯一性，SMT 求解器需要处理的约束就小得多，证明检查因而更快、更可靠。</div>
+
+            <div class="foot">
+                <span>先用便宜的类型系统排掉小错，把宝贵的证明精力留给大事。</span>
+                <span class="en">&amp;mut self / SMT</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p11" data-index="10">
+            <div class="top">
+                <span><span class="sec">09</span> · 下注 / Double Down</span>
+                <span>Type System</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>在「编译即正确」上继续加倍下注</h2>
+            <p class="dek">Rust 的类型系统已经很有表达力，但仍有一批它捕捉不到的东西，既有很常见的，也有很花哨的。</p>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="key">G1</div>
+                    <div class="nm">常见的缺口</div>
+                    <div class="ds">比如「这个方法只读某一个字段」的视图类型，以及内部引用这样的长期难题。它们不花哨，但天天在写。</div>
+                </div>
+                <div class="row">
+                    <div class="key">G2</div>
+                    <div class="nm">花哨的缺口</div>
+                    <div class="ds">比如「不得记录个人可识别信息」这种合规性质。类型系统现在完全接不住，只能靠人盯。</div>
+                </div>
+                <div class="row">
+                    <div class="key">G3</div>
+                    <div class="nm">工程上的缺口</div>
+                    <div class="ds">现有的 Rust 证明工具虽然酷，但使用过程很别扭，要应付一堆宏和钉死的编译器版本。这必须变成一套体面的流程，否则证明能力再强也推广不开。</div>
+                </div>
+            </div>
+
+            <div class="tail">
+                <div class="tl">方向</div>
+                <div class="x">逐个抬高这些上限，给 Agent 留出证明更复杂性质的空间，而不是让它在类型系统外面绕路。</div>
+            </div>
+
+            <div class="take">先补常见的缺口，再补花哨的性质，同时把证明工具做成普通编译流程的一部分。</div>
+
+            <div class="foot">
+                <span>缺口一个个补，证明工具链也得变成体面的流程。</span>
+                <span class="en">View Types / PII</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p12" data-index="11">
+            <div class="top">
+                <span><span class="sec">10</span> · 北极星 / North Star</span>
+                <span>Unsafe</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>北极星：不再有 unsafe 代码</h2>
+            <p class="dek">关键是别把 unsafe 理解成关键字。它指的是，对我们写下的每一段 unsafe 代码，我们都有能力证明它不会引发未定义行为。</p>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="key">A1</div>
+                    <div>
+                        <div class="nm">已有的进步必须承认</div>
+                        <div class="ds">现在「到底哪些代码需要被审计」这件事清晰多了，不再是一笔糊涂账。</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="key">A2</div>
+                    <div>
+                        <div class="nm">也已经形成共识</div>
+                        <div class="ds">库必须通过安全 API 边界，保护用户免于未定义行为。</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="key">A3</div>
+                    <div>
+                        <div class="nm">但标准还得再抬一档</div>
+                        <div class="ds">面对 Agent 挖掘漏洞的能力，旧标准挡不住源源不断的 CVE，证明能力必须跟上。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bars">
+                <div class="lbl">比喻的尺度 · CVE 的数量级</div>
+                <div class="bl">
+                    <div class="cap">Rust：一条 CVE 溪流</div>
+                    <div class="track2"><span class="fill sig" style="width:20%;"></span></div>
+                    <div class="num">有类型系统保护</div>
+                </div>
+                <div class="bl">
+                    <div class="cap">C++ / Java：一场洪水</div>
+                    <div class="track2"><span class="fill" style="width:100%;"></span></div>
+                    <div class="num">缺少同等保护</div>
+                </div>
+                <div class="note">宽度为原文比喻的定性示意，非实测数值。</div>
+            </div>
+
+            <div class="foot">
+                <span>Rust 遇到的是一条溪流，C++ 和 Java 遇到的是一场洪水。</span>
+                <span class="en">North Star / No Unsafe</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p13" data-index="12">
+            <div class="top">
+                <span><span class="sec">11</span> · 设计 / Design</span>
+                <span>Markdown Driven</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>三根柱子里最弱的一环：设计</h2>
+            <p class="dek">在证明和优化之前，你得先清楚自己在造什么。而当前最先进的做法，基本就是 Markdown 驱动开发。</p>
+
+            <div class="rows">
+                <div class="row">
+                    <div class="key">D1</div>
+                    <div class="nm">接口从实现里拆出来</div>
+                    <div class="ds">方便单独评审接口，或者一眼看出 Agent 在哪动了接口。这带着点当年头文件的复仇意味。</div>
+                </div>
+                <div class="row">
+                    <div class="key">D2</div>
+                    <div class="nm">至少提供更好的评审工具</div>
+                    <div class="ds">让人的注意力落在真正变了的地方，而不是在巨大的 diff 里找线索。</div>
+                </div>
+                <div class="row">
+                    <div class="key">D3</div>
+                    <div class="nm">走出传统编程语言的范畴</div>
+                    <div class="ds">做专用的建模语言，让人在高层设计与不变量上快速迭代，而不必扎进代码里。</div>
+                </div>
+                <div class="row">
+                    <div class="key">D4</div>
+                    <div class="nm">一本值得读的书</div>
+                    <div class="ds">Kari Wilhelm 的《Principles of Anchor Engineering》，讲如何抽出设计的关键要素，并据此驱动编码。</div>
+                </div>
+            </div>
+
+            <div class="bottom">
+                <div class="bl">开放问题</div>
+                <div class="x">Niko 没有把握 Rust 在这个领域能占多大份额，但这是三根柱子里唯一还没有工具答案的一根。</div>
+            </div>
+
+            <div class="foot">
+                <span>设计还是 Markdown 加祈祷，这是最弱的一环。</span>
+                <span class="en">Anchor Engineering</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p14" data-index="13">
+            <div class="top">
+                <span><span class="sec">12</span> · 结论 / Summary</span>
+                <span>Rust &amp; Language Design</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>要做的事没变，变的是权衡的砝码</h2>
+            <p class="dek">全篇收拢成两组结论：为什么 Rust 适配 agentic 开发，以及语言设计层面还能怎么更好。</p>
+
+            <div class="grp">
+                <div class="col">
+                    <div class="h">为什么 Rust 适配</div>
+                    <div class="it">
+                        <b>默认性能就好</b>
+                        <span>惯用写法已经够快，何必多付钱。</span>
+                    </div>
+                    <div class="it">
+                        <b>profiler 随手可用</b>
+                        <span>配上工具，想调多细就调多细。</span>
+                    </div>
+                    <div class="it">
+                        <b>类型系统是更强的护栏</b>
+                        <span>配置得当，还能用 newtype 之类的技巧再加固。</span>
+                    </div>
+                    <div class="it">
+                        <b>Agent 极擅长微调性能</b>
+                        <span>旋钮暴露得足够多，它就能一处一处往下拧。</span>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="h">语言设计还能怎么更好</div>
+                    <div class="it">
+                        <b>加倍下注编译即正确</b>
+                        <span>类型系统更能表达，别让 Agent 卡在绕开类型系统的死胡同里。</span>
+                    </div>
+                    <div class="it">
+                        <b>把北极星写清楚</b>
+                        <span>unsafe 代码也无不安全，而不是笼统地说「减少 unsafe」。</span>
+                    </div>
+                    <div class="it">
+                        <b>守住光谱两端</b>
+                        <span>低到能写内核，高到能写 GUI。该暴露的旋钮要暴露，意图要清晰，但不必把代码压到字符数最少。</span>
+                    </div>
+                    <div class="it">
+                        <b>继续发扬可扩展性</b>
+                        <span>把宏加类型系统撑起的 DSL 精神带进编译器，覆盖 GPU、深度语言互操作，也接得上定理证明器这类非 token 工具。</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tail">
+                <div class="tl">总纲</div>
+                <div class="x">要做的事和过去几乎一样，因为写代码的变成了 Agent，人类的精力转向了代码理解。</div>
+            </div>
+
+            <div class="foot">
+                <span>工具与语言都没换题目，只是每题的分值变了。</span>
+                <span class="en">Two Sets of Conclusions</span>
+            </div>
+        </div>
+
+        <div class="slide slide-content" id="p15" data-index="14">
+            <div class="top">
+                <span><span class="sec">13</span> · 收尾 / Closing</span>
+                <span>What's Easy Now</span>
+            </div>
+            <div class="rule"></div>
+
+            <h2>容易和困难，正在互换位置</h2>
+            <p class="dek">Marc Brooker 的判断：一件事的成功标准越能被清晰规格化，它就越容易。</p>
+
+            <div class="quote">
+                <p>过去公认很难的任务，可能很快被自动化；<br>而过去觉得容易的任务，反而会变得更值钱。</p>
+                <div class="src">MARC BROOKER · WHAT'S EASY NOW? WHAT'S HARD NOW?</div>
+            </div>
+
+            <div class="flip">
+                <div class="col">
+                    <div class="k">变容易</div>
+                    <div class="t">实现一个高效的密码学算法</div>
+                    <div class="d">数学定义清晰，成功标准能被完全规格化，Agent 加证明器就能接手。</div>
+                </div>
+                <div class="col">
+                    <div class="k">变得更值钱</div>
+                    <div class="t">做一个独特、有说服力的网站</div>
+                    <div class="d">标准说不清、靠判断和品味，恰恰是人类还站在前面的地方。</div>
+                </div>
+            </div>
+
+            <div class="close">
+                <div class="lbl">NIKO 的接法</div>
+                <div class="x">最大的动静将来自设计语言：一种让你在极高层捕获架构与意图行为的语言。人凭直觉写出设计，设计被翻译成有效的护栏，形式可以是类型检查、lint，也可以是待证明的定理；然后 Agent 负责把设计翻译成传统语言写的代码，人类只在偶尔看一眼。</div>
+            </div>
+
+            <div class="take">传统语言的设计不会变得无趣，只是权衡的取舍和从前大不相同。</div>
+
+            <div class="foot">
+                <span>最大的动静，会来自一种让人直接写出设计的语言。</span>
+                <span class="en">Marc Brooker / What's Easy Now</span>
+            </div>
+        </div>
+
+        <div class="navigation-bar">
+            <button class="nav-arrow" id="prevBtn">&#9664;</button>
+            <div class="dot-indicators" id="dotIndicators"></div>
+            <button class="nav-arrow" id="nextBtn">&#9654;</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const slides = document.querySelectorAll('.slide');
+            const total = slides.length;
+            let current = 0;
+            const dotContainer = document.getElementById('dotIndicators');
+            for (let i = 0; i < total; i++) {
+                const dot = document.createElement('button');
+                dot.className = 'nav-dot';
+                dot.addEventListener('click', () => goTo(i));
+                dotContainer.appendChild(dot);
+            }
+            const dots = document.querySelectorAll('.nav-dot');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            function updateSlide(index) {
+                slides.forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+                const cur = slides[index];
+                cur.style.display = 'flex';
+                cur.classList.add('active');
+                dots.forEach(d => d.classList.remove('active'));
+                dots[index].classList.add('active');
+                current = index;
+                prevBtn.disabled = index === 0;
+                nextBtn.disabled = index === total - 1;
+            }
+            function goTo(i) { if (i >= 0 && i < total) updateSlide(i); }
+            prevBtn.addEventListener('click', () => { if (current > 0) goTo(current - 1); });
+            nextBtn.addEventListener('click', () => { if (current < total - 1) goTo(current + 1); });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); if (current < total - 1) goTo(current + 1); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); if (current > 0) goTo(current - 1); }
+                else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+                else if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+            });
+            updateSlide(0);
+        })();
+    </script>
+</body>
+</html>
