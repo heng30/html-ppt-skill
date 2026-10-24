@@ -142,19 +142,19 @@
 
 ## 数字组
 
-三到四个数字并排，用竖 hairline 分隔。数字用 `tabular-nums`。
+三到四个数字并排，用间距分隔，不画竖线。数字用 `tabular-nums`。
 
 ```html
-<div style="display:grid;grid-template-columns:repeat(3,1fr);margin-top:19px;border-top:2px solid var(--ink);">
-  <div style="padding:13px 15px 11px 0;border-right:1px solid var(--rule);">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin-top:19px;border-top:2px solid var(--ink);">
+  <div style="padding:13px 0 11px;">
     <div style="font-family:var(--font-mono);font-size:32px;line-height:1;font-variant-numeric:tabular-nums;">1,284</div>
     <div class="note" style="margin-top:6px;">说明这数字是什么</div>
   </div>
-  <div style="padding:13px 15px;border-right:1px solid var(--rule);">
+  <div style="padding:13px 0 11px;">
     <div style="font-family:var(--font-mono);font-size:32px;line-height:1;font-variant-numeric:tabular-nums;color:var(--signal-text);">29%</div>
     <div class="note" style="margin-top:6px;">一页最多一个数字上色</div>
   </div>
-  <div style="padding:13px 0 11px 15px;">
+  <div style="padding:13px 0 11px;">
     <div style="font-family:var(--font-mono);font-size:32px;line-height:1;font-variant-numeric:tabular-nums;">3.5×</div>
     <div class="note" style="margin-top:6px;">单位写清</div>
   </div>
@@ -172,8 +172,7 @@
   <div class="top" style="letter-spacing:.3em;"><span>幕间</span><span>INTERLUDE</span></div>
   <div class="rule" style="background:var(--ink);"></div>
 
-  <div style="flex:1;display:flex;align-items:center;gap:39px;">
-    <div style="width:1px;align-self:stretch;background:var(--ink);margin:33px 0;"></div>
+  <div style="flex:1;display:flex;align-items:center;gap:48px;">
     <div style="flex:1;">
       <p style="font-size:32px;line-height:1.5;letter-spacing:-.01em;">原文引语，保留出处语言。</p>
       <p style="margin-top:23px;font-family:var(--font-sans);font-size:14px;line-height:1.85;color:#3a3833;max-width:505px;">中文翻译或解读。</p>

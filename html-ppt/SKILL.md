@@ -18,7 +18,42 @@ disable-model-invocation: true
 - 其余一律走非代码模板，包括只提几个函数名、字段名的文章
 - 同一篇 deck 只用一套视觉系统，不允许两种模板的组件互相串门
 
-产出统一为三件：HTML 幻灯片、逐页讲解稿 `*-script.md`、每页一张 PNG。
+---
+
+## 输出结构
+
+一篇 deck 一个目录，目录名用 URL 派生的 slug（如 `01-blog-cloudflare-com-rust-workers-emscripten-target`）：
+
+```text
+<slug>/
+├── index.html      # 自包含幻灯片
+├── script.md       # 逐页口播稿
+├── slides/         # slide-1.png … 数量与页数一致
+├── images/         # 正文配图 img-01.ext…（无图不建）
+└── url             # 原文 URL，一行
+```
+
+批量模式下目录名带两位序号前缀，保留 `url` 文件以便回溯原文。
+
+---
+
+## 脚本
+
+`scripts/` 里四个工具，除 playwright 外无依赖：
+
+| 脚本 | 用途 | 命令 |
+|---|---|---|
+| `scripts/verify.js` | 验收：画框尺寸、溢出、顶栏页脚、data-index、代码块外壳、截图数、讲解稿页码 | `NODE_PATH=$(npm root -g) node <skill>/scripts/verify.js <目录>` |
+| `scripts/shot.js` | 逐页截图，输出 1920×1080 | `NODE_PATH=$(npm root -g) node <skill>/scripts/shot.js <目录>` |
+| `scripts/done.py` | 批量模式：从队列文件原子删除已完成的 URL | `python3 <skill>/scripts/done.py urls.txt <url>` |
+| `scripts/batch.workflow.js` | 批量流水线（prux SubagentWorkflow） | 见「批量模式」 |
+
+`NODE_PATH=$(npm root -g)` 让脚本找到全局安装的 playwright。
+
+`verify.js` 输出 JSON `{ok, pages, errors, warns}`，退出码 0 才算通过：
+
+- `--no-shots`：只验版面，跳过截图与讲解稿
+- `--min N` / `--max N`：改页数下限 / 上限（默认 8 / 14）
 
 ---
 
@@ -145,6 +180,7 @@ disable-model-invocation: true
 - **禁止 AI 默认味**：圆角卡片、内容投影、渐变、紫蓝配色、左彩条、01/02/03 编号三件套、logo 墙、编造数据与评价
 - **中文排印**：中英文之间留一个空格；句读用全角标点；不使用破折号（——）
 - **一页一个视觉主角**：行列表、数字组、图、引语，只选一个
+- **横向排版不画竖线**：并排的文本块之间只用间距和留白分隔，禁止竖直分隔线；论点页、引语页、旁注、数字组同理，区隔靠字号与字重
 - **不放代码块**：函数名、字段名用 `<span class="mono">` 行内标注。代码需要成块展示时，说明这篇该走代码模板
 
 #### 图表与图片
@@ -254,6 +290,14 @@ disable-model-invocation: true
 
 ## 第四步：验证
 
+先跑脚本拿硬指标，再对照下面的清单补人工检查项：
+
+```bash
+NODE_PATH=$(npm root -g) node ~/.prux/skills/html-ppt/scripts/verify.js <输出目录>
+```
+
+`ok: true`、`errors` 为空才算过；`warns` 逐条落实（尤其 `.body` 缺失、正文区偏矮、破折号）。截图与讲解稿还没生成时，先加 `--no-shots`。
+
 ### A · 非代码文章
 
 - [ ] 输出单个 HTML，`<html lang="zh-CN">`，全文中文，无破折号
@@ -266,6 +310,7 @@ disable-model-invocation: true
 - [ ] 全篇单一强调色，每页强调 ≤ 3 处
 - [ ] 字号达标：`h1` 48px、`h2` ≥ 33px、正文 ≥ 11px、标签 ≥ 8px
 - [ ] 没有代码块、内容投影、圆角卡片、渐变、logo 墙、emoji 堆砌
+- [ ] 横排文本块之间无竖直分隔线
 - [ ] 图片路径 `images/…`，`object-fit:contain`，未裁剪
 - [ ] 图表有坐标轴 / 单位 / 口径，或明确标注「定性示意」
 - [ ] 所有数字与引语可追溯到原文，无杜撰
@@ -291,13 +336,13 @@ disable-model-invocation: true
 - [ ] 每页 `.body` 不是半页空白：内容至少占满内容区的三分之二
 - [ ] 并排页面左右两栏垂直中心 |Δ| ≤ 2px（量中心，不是量顶部）
 
-**完成标准：** 对应模板的全部检查项通过。
+**完成标准（两种模板）：** `verify.js` 返回 `ok: true`，且 errors 为空。
 
 ---
 
 ## 第五步：生成讲解文稿（口播稿）
 
-为每页写一段中文讲解词，保存为同目录的 `*-script.md`。
+为每页写一段中文讲解词，保存为同目录的 `script.md`。文件名固定，`verify.js` 按这个名字查页码范围。
 
 **这是口播稿，写给耳朵听，不是写给眼睛看。** 每一段都要能直接念出来配到画面上。
 
@@ -385,19 +430,34 @@ disable-model-invocation: true
 
 ### 两套模板通用
 
-用 `html-screenshot` 把每页转成 PNG：
+默认用 `scripts/shot.js`，视口可控、输出稳定：
+
+```bash
+NODE_PATH=$(npm root -g) node ~/.prux/skills/html-ppt/scripts/shot.js <输出目录>
+```
+
+- 视口 1008px（960 内容 + 48 body padding），`deviceScaleFactor: 2`，逐页截 `.slide`
+- 输出 `<目录>/slides/slide-1.png`、`slide-2.png`…，正好 1920×1080
+- `--prefix <名字>` 改文件名前缀
+
+也可以用 `html-screenshot`：
 
 ```bash
 html-screenshot -o [输出目录] -r 1080 -p slide [html 文件路径]
 ```
 
-- `-o`：输出目录，默认当前目录下新建 `slides/`
 - `-r 1080`：宽度 1920px，高度按比例
-- `-p slide`：输出 `slide-1.png`、`slide-2.png`…
-- 两套模板都是 960×540，输出正好 1920×1080
-- `html-screenshot` 的渲染结果可能与 960px 设计视口有偏差。输出异常（页面异常变高、竖版、布局错乱）时，改用 playwright 等可控视口：1008px（960 内容 + 48 body padding）+ `deviceScaleFactor: 2`，逐页截 `.slide` 元素，得到 1920px 宽，格式与 `html-screenshot` 一致
+- html-screenshot 的渲染结果可能与 960px 设计视口有偏差，输出异常（页面异常变高、竖版、布局错乱）时改用 `scripts/shot.js`
 
-**完成标准：** 每页一张 PNG，数量与 `.slide` 数量一致，图片清晰可读。
+出图后再跑一次完整验收：
+
+```bash
+NODE_PATH=$(npm root -g) node ~/.prux/skills/html-ppt/scripts/verify.js <输出目录>
+```
+
+`verify.js` 会比对 `.slide` 数量与 PNG 数量，并检查 `script.md` 是否覆盖每一页。
+
+**完成标准：** `verify.js` 返回 `ok: true`；每页一张 PNG，数量与 `.slide` 数量一致，图片清晰可读。
 
 ---
 
@@ -443,8 +503,34 @@ html-screenshot -o [输出目录] -r 1080 -p slide [html 文件路径]
 
 ---
 
+## 批量模式
+
+多条 URL 时，每条一个目录 + 一个队列文件，不要把它们塞进同一份 deck。
+
+1. 从 `urls.txt` 建目录（两位序号 + URL slug），把 URL 写进各自的 `url` 文件
+2. 用 [`scripts/batch.workflow.js`](scripts/batch.workflow.js) 跑流水线：第一段生成，第二段截图 + 按 `verify.js` 修到全绿
+3. 每条通过后 `gate` 自动调 `scripts/done.py` 把该 URL 从 `urls.txt` 删除，队列文件就是进度条
+
+```js
+SubagentWorkflow({
+  scriptPath: '~/.prux/skills/html-ppt/scripts/batch.workflow.js',
+  args: {
+    base: '/绝对/输出根目录',
+    queue: 'urls.txt',                       // 可省略；给了就自动删已完成项
+    items: [{ url: 'https://…', dir: '01-xxx' }],
+  },
+})
+```
+
+- 并发由运行时控制（通常 16 路），不要手写循环逐条等
+- 抓不到正文的 URL（登录页、OAuth 回调、404）不硬编内容：目录里只留 `url` 和 `NOTE.md`，保留在队列里等人工处理
+- 单条 `verify.js` 失败不会污染其他条：失败项自己留着，队列里不删
+
+---
+
 ## 失败模式
 
+- **脚本报 FAIL**：按 `errors` 逐条改版面，不要改脚本、不要删检查项；`warns` 也不能长期挂着
 - **模板选错**：非代码文章里塞了三个代码块 → 改走代码模板；代码文章通篇没有代码 → 改走非代码模板
 - **提前完成**：页数太少或内容单薄 → 回查第二步，确认每章真的分到页面
 - **非代码页变成网页**：出现圆角卡片、阴影、渐变、彩色图标 → 删掉，回到 hairline + 字号层级
