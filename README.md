@@ -6,13 +6,18 @@
 
 ```
 html-ppt-skill/
-├── html-ppt/                  # 幻灯片生成 Skill（双模板 + 组件文档 + 工作流）
+├── html-ppt/                  # 幻灯片生成 Skill（双模板 + 组件文档 + 脚本 + 工作流）
 │   ├── SKILL.md               # 主工作流：分析→选模板→分页→生成→验证→讲解稿→截图
 │   ├── COMPONENTS.md          # 代码模板组件词汇表
 │   ├── ARTICLE-COMPONENTS.md  # 非代码模板版式与组件参考
 │   ├── coding-template.html   # 代码密集文章：单文件 960×540，底部导航栏
-│   └── article-template/      # 非代码文章：单文件 960×540，底部导航栏
-│       └── index.html
+│   ├── article-template/      # 非代码文章：单文件 960×540，底部导航栏
+│   │   └── index.html
+│   └── scripts/               # 可执行脚本
+│       ├── verify.js          # 版面验收：尺寸 / 溢出 / 组件 / 截图 / 讲解稿页码
+│       ├── shot.js            # 逐页截图，1920×1080
+│       ├── done.py            # 批量模式：从队列文件原子删除已完成 URL
+│       └── batch.workflow.js  # 批量流水线（prux SubagentWorkflow）
 └── html-screenshot/           # Rust 命令行工具：单文件 HTML 幻灯片逐页截图为 PNG
     ├── Cargo.toml
     ├── Makefile
@@ -42,7 +47,31 @@ html-ppt-skill/
 | 3. 生成 HTML | 非代码：复制模板单文件，替换页面；代码：单文件套组件 | 对应文档的约束全部满足 |
 | 4. 验证 | 画框尺寸、组件、路径、内容真实性 | 全部检查项通过 |
 | 5. 讲解稿 | 为每页写口语化中文讲解词，保存为 `*-script.md` | 页数对应，全文连贯 |
-| 6. 截图 | 两套模板都用 `html-screenshot` | 图片清晰可读 |
+| 6. 截图 | 两套模板都用 `scripts/shot.js`（或 `html-screenshot`） | `verify.js` 返回 `ok: true` |
+
+### 输出结构
+
+一篇 deck 一个目录：
+
+```text
+<slug>/
+├── index.html      # 自包含幻灯片
+├── script.md       # 逐页口播稿
+├── slides/         # slide-1.png …
+├── images/         # 正文配图（无图不建）
+└── url             # 原文 URL
+```
+
+### 脚本
+
+| 脚本 | 用途 | 命令 |
+|------|------|------|
+| `scripts/verify.js` | 验收：画框尺寸、溢出、顶栏页脚、data-index、代码块外壳、截图数、讲解稿页码 | `NODE_PATH=$(npm root -g) node html-ppt/scripts/verify.js <目录>` |
+| `scripts/shot.js` | 逐页截图 1920×1080 | `NODE_PATH=$(npm root -g) node html-ppt/scripts/shot.js <目录>` |
+| `scripts/done.py` | 从队列文件原子删除已完成 URL | `python3 html-ppt/scripts/done.py urls.txt <url>` |
+| `scripts/batch.workflow.js` | 批量流水线（prux SubagentWorkflow） | 见 SKILL.md「批量模式」 |
+
+`verify.js` 输出 `{ok, pages, errors, warns}`，退出码 0 才算通过；`--no-shots` 只验版面，`--min/--max` 改页数区间。
 
 ### 组件体系
 

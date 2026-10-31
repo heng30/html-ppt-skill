@@ -48,6 +48,7 @@ function buildPrompt(item) {
 3. 对应模板：非代码 ${SKILL}/article-template/index.html，代码 ${SKILL}/coding-template.html
 
 第二步，抓正文：
+- 抓到的正文按 Markdown 原样写到 ${BASE}/${item.dir}/article.md（标题、作者、日期一起，不摘要、不翻译、不改写）
 - 优先用 fetch_content 工具抓 ${item.url}
 - 失败就用 bash curl，带 UA：curl -sSL -m 40 -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36" <url>
 - GitHub blob 页面换成 raw.githubusercontent.com 对应地址；gist 用 /raw 后缀
@@ -78,10 +79,11 @@ A. index.html
    - 非代码模板不写代码块，函数名用 <span class="mono">
    - 图表必须有坐标轴/单位/口径，非实测要标「定性示意，非实测数值」
 B. script.md
-   - 逐页口播稿：每页一段，标题格式「## 第 N 页 · 小标题」，N 与 data-index 严格对应
+   - 逐页专家讲解稿：每页一段，标题格式「## 第 N 页 · 小标题」，N 与 data-index 严格对应
    - 第 0 页 80 到 150 字，常规页 120 到 200 字，重点页 200 到 300 字，末页 150 到 250 字
-   - 第二人称、短句、每页至少一个真问题；不用「本页」「如图所示」「综上所述」「值得注意的是」；不用破折号
-   - 数字口语化，术语第一次出现带半句解释
+   - 忠于原文：论点、数字、语气、术语都来自原文，不加原文没有的观点和情绪，不把「可能」念成「一定」
+   - 第二人称；句子按口语句法写完整，主谓齐全，不许电报体；不用「本页」「如图所示」「综上所述」「值得注意的是」；不用破折号
+   - 数字先念原文精确值，再补量级；术语第一次出现念全称
 
 不要做的事：
 - 不要截图，不要跑 ${VERIFY}（下一个环节负责）

@@ -137,6 +137,7 @@ const push = (list, msg) => { if (!list.includes(msg)) list.push(msg); };
     const pngs = fs.existsSync(slidesDir) ? fs.readdirSync(slidesDir).filter(f => f.endsWith('.png')) : [];
     if (pngs.length < info.n) push(errors, `截图数量 ${pngs.length} 少于页数 ${info.n}（先跑 scripts/shot.js）`);
 
+    if (!fs.existsSync(path.join(dir, 'article.md'))) push(warns, '缺少 article.md 原文（第零步要求把原文落盘）');
     const scriptPath = path.join(dir, 'script.md');
     if (!fs.existsSync(scriptPath)) push(errors, '缺少 script.md 讲解稿');
     else {
@@ -146,6 +147,9 @@ const push = (list, msg) => { if (!list.includes(msg)) list.push(msg); };
       }
       if (/——/.test(md)) push(errors, 'script.md 中出现破折号 ——');
       if (/本页我们来看|如图所示|综上所述|值得注意的是|不难发现|由此可见|这一页我们来看/.test(md)) push(errors, 'script.md 出现念稿腔用语');
+      const sents = md.split(/\n#+[^\n]*/).join('').split(/[。！？]/).map(s => s.replace(/\s/g, '')).filter(s => s.length > 1);
+      const stubs = sents.filter(s => s.length < 8).length;
+      if (sents.length >= 10 && stubs / sents.length > 0.35) push(warns, `script.md 疑似电报体：${stubs}/${sents.length} 句不到 8 字，检查是否按字数硬断句`);
     }
   }
 
